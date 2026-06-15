@@ -248,6 +248,9 @@ func (db *pgDb) SetDatasetOnDemandDatasetReleased(ctx context.Context, datasetAc
 	return db.setDatasetOnDemandDatasetReleased(ctx, nil, datasetAccession)
 }
 
+func (db *pgDb) IsDatasetOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error) {
+	return db.isDatasetOnDemandDatasetReleased(ctx, nil, dodDatasetAccession)
+}
 func (db *pgDb) GetDatasetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error) {
 	return db.getDatasetOnDemandDatasetRemsMetadata(ctx, nil, datasetAccession)
 }

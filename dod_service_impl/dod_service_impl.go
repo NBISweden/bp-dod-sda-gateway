@@ -338,18 +338,34 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 	}), nil
 }
 
-func (d *dodServiceImpl) GetDoDDataset(ctx context.Context, c *connect.Request[v1.GetDoDDatasetRequest]) (*connect.Response[v1.GetDoDDatasetResponse], error) {
-	//TODO implement me
-	panic("implement me")
-}
+func (d *dodServiceImpl) GetDoDDatasetStatus(ctx context.Context, c *connect.Request[v1.GetDoDDatasetStatusRequest]) (*connect.Response[v1.GetDoDDatasetStatusResponse], error) {
+	ctx, span := observability.Tracer().Start(ctx, "GetDoDDatasetStatus", trace.WithAttributes(attribute.String("accession", c.Msg.GetDodDatasetAccession())))
+	defer span.End()
 
-func (d *dodServiceImpl) ListDoDDatasets(ctx context.Context, c *connect.Request[v1.ListDoDDatasetsRequest]) (*connect.Response[v1.ListDoDDatasetsResponse], error) {
-	//TODO implement me
-	panic("implement me")
+	if c.Msg.GetDodDatasetAccession() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty dod dataset accession"))
+	}
+
+	dodDatasetReleased, err := database.IsDatasetOnDemandDatasetPublished(ctx, c.Msg.GetDodDatasetAccession())
+	if err != nil {
+		slog.Warn("failed to check if dataset on demand dataset is publish", "error", err, "accession", c.Msg.GetDodDatasetAccession())
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	res := v1.GetDoDDatasetStatusResponse{
+		Status: v1.GetDoDDatasetStatusResponse_STATUS_CREATING,
+	}
+
+	if dodDatasetReleased {
+		res.Status = v1.GetDoDDatasetStatusResponse_STATUS_RELEASED
+	}
+
+	return connect.NewResponse(&res), nil
 }
 
 func buildDoDDataset(ctx context.Context, originDatasets map[string]*models.OriginDataset, datasetImages map[string][]string) *models.DatasetOnDemandDataset {
-	ctx, span := observability.Tracer().Start(ctx, "buildDoDDataset")
+	_, span := observability.Tracer().Start(ctx, "buildDoDDataset")
 	defer span.End()
 
 	datasetAccession := uuid.NewString()

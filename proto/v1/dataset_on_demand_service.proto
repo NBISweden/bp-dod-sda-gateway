@@ -7,8 +7,7 @@ option go_package = "github.com/imi-bigpicture/bp-dod-sda-gateway/grpc_gen/go/v1
 service DatasetOnDemandService {
   rpc NewOriginDataset(NewOriginDatasetRequest) returns (NewOriginDatasetResponse);
   rpc RequestDatasetCreation(RequestDatasetCreationRequest) returns (RequestDatasetCreationResponse);
-  rpc GetDoDDataset(GetDoDDatasetRequest) returns (GetDoDDatasetResponse);
-  rpc ListDoDDatasets(ListDoDDatasetsRequest) returns (ListDoDDatasetsResponse);
+  rpc GetDoDDatasetStatus(GetDoDDatasetStatusRequest) returns (GetDoDDatasetStatusResponse);
 }
 
 message NewOriginDatasetRequest {
@@ -23,30 +22,18 @@ message RequestDatasetCreationRequest {
 message RequestDatasetCreationResponse {
   string dod_dataset_accession = 1;
 }
-message GetDoDDatasetRequest {
+message GetDoDDatasetStatusRequest {
   string dod_dataset_accession = 1;
 }
-message GetDoDDatasetResponse {
-  DoDDataset dod_dataset = 1;
-}
-message ListDoDDatasetsRequest {
-
-}
-message ListDoDDatasetsResponse {
- repeated DoDDataset dod_datasets = 1;
-}
-
-
-
-message DoDDataset {
-  string dataset_accession = 1;
+message GetDoDDatasetStatusResponse {
   enum Status {
     STATUS_INVALID = 0;
     STATUS_CREATING = 1;
-    STATUS_CREATED = 2;
+    STATUS_RELEASED = 2;
   }
-  Status status = 2;
+  Status status = 1;
 }
+
 
 
 

@@ -66,6 +66,9 @@ func (tx *pgTx) SetDatasetOnDemandDatasetReleased(ctx context.Context, datasetAc
 	return tx.setDatasetOnDemandDatasetReleased(ctx, tx.tx, datasetAccession)
 }
 
+func (tx *pgTx) IsDatasetOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error) {
+	return tx.isDatasetOnDemandDatasetReleased(ctx, tx.tx, dodDatasetAccession)
+}
 func (tx *pgTx) GetDatasetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error) {
 	return tx.getDatasetOnDemandDatasetRemsMetadata(ctx, tx.tx, datasetAccession)
 }

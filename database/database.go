@@ -43,6 +43,7 @@ type functions interface {
 	ListDatasetOnDemandImageFileAccessions(ctx context.Context, datasetAccession string) ([]string, error)
 
 	GetDatasetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error)
+	IsDatasetOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error)
 
 	SetDatasetOnDemandDatasetReleased(ctx context.Context, datasetAccession string) error
 }
@@ -77,4 +78,8 @@ func SetDatasetOnDemandDatasetReleased(ctx context.Context, datasetAccession str
 
 func GetDatasetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error) {
 	return db.GetDatasetOnDemandDatasetRemsMetadata(ctx, datasetAccession)
+}
+
+func IsDatasetOnDemandDatasetPublished(ctx context.Context, dodDatasetAccession string) (bool, error) {
+	return db.IsDatasetOnDemandDatasetReleased(ctx, dodDatasetAccession)
 }

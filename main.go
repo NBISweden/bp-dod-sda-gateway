@@ -6,6 +6,10 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"connectrpc.com/connect"
 	"connectrpc.com/grpcreflect"
@@ -95,17 +99,34 @@ func run() error {
 	p.SetHTTP1(true)
 	// Use h2c so we can serve HTTP/2 without TLS.
 	p.SetUnencryptedHTTP2(true)
-	s := http.Server{
+	srv := http.Server{
 		Addr:      fmt.Sprintf(":%d", config.DodServicePort()),
 		Handler:   mux,
 		Protocols: p,
 	}
+	serverErr := make(chan error, 1)
 
-	if err := s.ListenAndServe(); err != nil {
-		return fmt.Errorf("failed to start server: %w", err)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			serverErr <- err
+		}
+	}()
+
+	defer func() {
+		serverShutdownCtx, serverShutdownCancel := context.WithTimeout(ctx, 10*time.Second)
+		if err := srv.Shutdown(serverShutdownCtx); err != nil {
+			slog.Error("failed to close http/https server", "error", err)
+		}
+		serverShutdownCancel()
+	}()
+
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	select {
+	case <-sigc:
+		return nil
+	case err := <-serverErr:
+		return err
 	}
-
-	// TODO sigterm handling
-
-	return nil
 }
