@@ -256,6 +256,10 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 
 	originDatasets := make(map[string]*models.OriginDataset)
 
+	var ensureSameWorkflowID int
+
+	var ensureSameTou *metadata_models.PolicySet
+
 	for originDatasetAccession := range originDatasetImages {
 		originDataset, err := tx.GetOriginDataset(ctx, originDatasetAccession)
 		if err != nil {
@@ -271,6 +275,31 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 		}
 
 		originDatasets[originDatasetAccession] = originDataset
+
+		if ensureSameWorkflowID == 0 {
+			ensureSameWorkflowID = originDataset.RemsWorkflowID
+		}
+
+		if ensureSameTou == nil {
+			ensureSameTou = originDataset.Policy
+		}
+
+		// If only images from one dataset no need to compare
+		if len(originDatasetImages) == 1 {
+			continue
+		}
+
+		if ensureSameWorkflowID != originDataset.RemsWorkflowID {
+			slog.Info("user tried to combine datasets with different workflows id")
+
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("can not combine images from datasets originating from different DaCs"))
+		}
+
+		if ensureSameTou.Equal(originDataset.Policy) {
+			slog.Info("user tried to combine datasets with different terms of use")
+
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("can not combine images from datasets with different terms of use"))
+		}
 	}
 
 	dodDataset := buildDoDDataset(ctx, originDatasets, originDatasetImages)
@@ -324,7 +353,6 @@ func buildDoDDataset(ctx context.Context, originDatasets map[string]*models.Orig
 	defer span.End()
 
 	datasetAccession := uuid.NewString()
-	policyAccession := uuid.NewString()
 
 	// TODO accession format
 	dodDatasetMetadata := &models.DatasetOnDemandDataset{
@@ -344,134 +372,8 @@ func buildDoDDataset(ctx context.Context, originDatasets map[string]*models.Orig
 		},
 		ObserverMetadata: nil, // Populated if observers are to be included in dod dataset
 		PolicyMetadata: models.MetadataFile[*metadata_models.PolicySet]{
-			Accession: uuid.NewString(),
-			MetadataSet: &metadata_models.PolicySet{
-				Policies: []metadata_models.Policy{
-					{
-						ObjectType: metadata_models.ObjectType{
-							Alias:     policyAccession,
-							Accession: policyAccession,
-						},
-						DatasetRef: metadata_models.Reference{
-							Alias:     datasetAccession,
-							Accession: datasetAccession,
-						},
-						Attributes: metadata_models.NullableAttributes{
-							Value: &metadata_models.Attributes{
-								// Not set as not set as required in Metadata Standards v2.0.0
-
-								StringAttributes: []metadata_models.StringAttribute{
-									{
-										Tag: "title",
-										Value: &metadata_models.NullableString{
-											Value: new("Dataset On Demand Policy"),
-										},
-									}, {
-										Tag: "type_of_dataset",
-										Value: &metadata_models.NullableString{
-											Value: new("Dataset On Demand"), // TODO verify (add to Metadata standard v3.0.0?
-										},
-									}, {
-										Tag: "type_of_access",
-										Value: &metadata_models.NullableString{
-											Value: new("Direct access"),
-										},
-									}, {
-										Tag: "policy_text",
-										Value: &metadata_models.NullableString{
-											Value: new("Dataset On Demand Policy"), // TODO
-										},
-									}, {
-										Tag: "legal_basis_for_sharing_the_data",
-										Value: &metadata_models.NullableString{
-											// TODO
-											Nil: true,
-										},
-									}, {
-										Tag: "terms_of_use_version",
-										Value: &metadata_models.NullableString{
-											Value: new("2026-06-09"),
-										},
-									}, {
-										Tag: "allowed_geographical_distribution",
-										Value: &metadata_models.NullableString{
-											Value: new("European Union and EEA countries"),
-										},
-									}, {
-										Tag: "duration_of_use",
-										Value: &metadata_models.NullableString{
-											Value: new("Limited to the duration of the purpose of the data access request"),
-										},
-									}, {
-										Tag: "defined_research_question_required",
-										Value: &metadata_models.NullableString{
-											Value: new("False"),
-										},
-									}, {
-										Tag: "informed_consent_form_defined_use_restrictions",
-										Value: &metadata_models.NullableString{
-											Nil: true,
-										},
-									}, {
-										Tag: "custom_use_restrictions",
-										Value: &metadata_models.NullableString{
-											Nil: true,
-										},
-									}, {
-										Tag: "required_bigpicture_acknowledgment",
-										Value: &metadata_models.NullableString{
-											Value: new("This project has received funding from the Innovative Medicines Initiative 2 Joint Undertaking under grant agreement No 945358. This Joint Undertaking receives support from the European Union’s Horizon 2020 research and innovation program and EFPIA"),
-										},
-									}, {
-										Tag: "",
-										Value: &metadata_models.NullableString{
-											Nil: true,
-										},
-									}, {
-										Tag:   "informed_consent_form_defined_use_restrictions",
-										Value: &metadata_models.NullableString{},
-									},
-								},
-								NumericAttributes:     nil,
-								MeasurementAttributes: nil,
-								CodeAttributes:        nil,
-								SetAttributes: []metadata_models.SetAttribute{
-									{
-										Tag: "allowed_uses",
-										Value: &metadata_models.NullableAttributes{
-											Value: &metadata_models.Attributes{
-												StringAttributes: []metadata_models.StringAttribute{
-													{ // TODO verify
-														Tag: "allowed_use",
-														Value: &metadata_models.NullableString{
-															Value: new("Implementation of Bigpicture Project (IMI2-945358)"),
-														},
-													},
-												},
-											},
-										},
-									}, {
-										Tag: "required_custom_acknowledgments",
-										Value: &metadata_models.NullableAttributes{
-											Nil: true,
-										},
-									}, {
-										Tag: "required_citations",
-										Value: &metadata_models.NullableAttributes{
-											Nil: true,
-										},
-									}, {
-										Tag: "licenses", // TODO description missing in Metadata standard v2.0.0
-										Value: &metadata_models.NullableAttributes{
-											Nil: true,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
+			Accession:   uuid.NewString(),
+			MetadataSet: &metadata_models.PolicySet{},
 		},
 		RemsMetadata: models.MetadataFile[*metadata_models.RemsSet]{
 			Accession:   uuid.NewString(),
@@ -501,6 +403,11 @@ func buildDoDDataset(ctx context.Context, originDatasets map[string]*models.Orig
 	// TODO alias across datasets, generate, etc
 	for originDatasetAccession, originDataset := range originDatasets {
 		dodDatasetMetadata.OriginDatasetAccessions = append(dodDatasetMetadata.OriginDatasetAccessions, originDatasetAccession)
+
+		// Just add policies from first orign dataset as they should all be the same
+		if len(dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies) == 0 {
+			dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies = append(dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies, originDataset.Policy.Policies...)
+		}
 
 		if remsEntry, ok := remsEntries[originDataset.RemsWorkflowID]; ok {
 			remsEntry.Attributes.Value.SetAttributes[0].Value.Value.StringAttributes = append(
