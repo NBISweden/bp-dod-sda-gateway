@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -206,7 +205,7 @@ func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, data
 	if err != nil {
 		return false, fmt.Errorf("failed to create rems resource for dataset on demand: %w", err)
 	}
-	if err := dmfh.createRemsCatalogueItem(ctx, remsMetadata, remsResourceID); err != nil {
+	if err := dmfh.createRemsCatalogueItem(ctx, remsMetadata, datasetAccession, remsResourceID); err != nil {
 		return false, fmt.Errorf("failed to create rems catalog item for dataset on demand: %w", err)
 	}
 
@@ -360,139 +359,6 @@ func (dmfh *dodMetadataFileHandler) triggerFileIngest(ctx context.Context, datas
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+inboxToken)
-
-	resp, err := dmfh.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("http request: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-
-		return fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
-}
-
-func (dmfh *dodMetadataFileHandler) createRemsResource(ctx context.Context, remsMetadata *metadata_models.RemsSet, datasetAccession string) (int, error) {
-	ctx, span := observability.Tracer().Start(ctx, "createRemsResource")
-	defer span.End()
-
-	endpoint, err := url.JoinPath(remsUrl, "api", "resources", "create")
-	if err != nil {
-		return -1, fmt.Errorf("invalid base URL: %w", err)
-	}
-
-	resourcesCreateReq := struct {
-		ResourceID   string `json:"resid"`
-		Organization struct {
-			OrganizationID string `json:"organization/id"`
-		} `json:"organization"`
-		Licenses []string `json:"licenses"`
-	}{
-		ResourceID: datasetAccession,
-	}
-	// TODO how to create resource from multiple orgs???
-	for _, rems := range remsMetadata.Rems {
-		resourcesCreateReq.Organization.OrganizationID = rems.OrganisationId
-	}
-
-	reqBody, err := json.Marshal(resourcesCreateReq)
-	if err != nil {
-		return -1, fmt.Errorf("failed to marshal resources create body: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return -1, fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Rems-Api-Key", remsKey)
-	req.Header.Set("X-Rems-User-Id", remsUser)
-
-	resp, err := dmfh.httpClient.Do(req)
-	if err != nil {
-		return -1, fmt.Errorf("http request: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-
-		return -1, fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
-	}
-	parsedResp := new(struct {
-		Id int `json:"id"`
-	})
-
-	if err := json.Unmarshal(body, parsedResp); err != nil {
-		return -1, fmt.Errorf("failed to unmarshal ingest body: %w", err)
-	}
-
-	return parsedResp.Id, nil
-}
-func (dmfh *dodMetadataFileHandler) createRemsCatalogueItem(ctx context.Context, remsMetadata *metadata_models.RemsSet, remsResourceID int) error {
-	ctx, span := observability.Tracer().Start(ctx, "createRemsCatalogueItem")
-	defer span.End()
-
-	endpoint, err := url.JoinPath(remsUrl, "api", "catalogue-items", "create")
-	if err != nil {
-		return fmt.Errorf("invalid base URL: %w", err)
-	}
-
-	catalogueItemCreateReq := struct {
-		ResourceID   int `json:"resid"`
-		WorkflowID   int `json:"wfid"`
-		Organization struct {
-			OrganizationID string `json:"organization/id"`
-		} `json:"organization"`
-		Localizations struct {
-			En struct {
-				Title string `json:"title"`
-			} `json:"en"`
-		} `json:"localizations"`
-	}{
-		ResourceID: remsResourceID,
-	}
-	catalogueItemCreateReq.Localizations.En.Title = "Dataset On Demand Dataset"
-
-	// TODO how to create resource from multiple orgs???
-	for _, rems := range remsMetadata.Rems {
-		catalogueItemCreateReq.Organization.OrganizationID = rems.OrganisationId
-		workflowID, err := strconv.Atoi(rems.WorkflowId)
-		if err != nil {
-			return fmt.Errorf("failed to parse workflow id: %w", err)
-		}
-		catalogueItemCreateReq.WorkflowID = workflowID
-	}
-
-	if remsDemoOrganisationID != "" {
-		catalogueItemCreateReq.Organization.OrganizationID = remsDemoOrganisationID
-	}
-	if remsDemoWorkflowID != -1 {
-		catalogueItemCreateReq.WorkflowID = remsDemoWorkflowID
-	}
-
-	reqBody, err := json.Marshal(catalogueItemCreateReq)
-	if err != nil {
-		return fmt.Errorf("failed to marshal resources create body: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Rems-Api-Key", remsKey)
-	req.Header.Set("X-Rems-User-Id", remsUser)
 
 	resp, err := dmfh.httpClient.Do(req)
 	if err != nil {
