@@ -1,7 +1,7 @@
 syntax = "proto3";
 package dataset_on_demand;
 
-option go_package = "github.com/imi-bigpicture/bp-dod-sda-gateway/grpc_gen/go/v1";
+option go_package = "github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/v1";
 
 
 service DatasetOnDemandService {

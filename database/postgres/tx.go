@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/models"
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/models/metadata_models"
+	"github.com/NBISweden/bp-dod-sda-gateway/models"
+	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 )
 
 type pgTx struct {

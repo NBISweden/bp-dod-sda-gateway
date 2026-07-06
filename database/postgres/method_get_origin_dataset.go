@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/internal/observability"
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/models"
+	"github.com/NBISweden/bp-dod-sda-gateway/internal/observability"
+	"github.com/NBISweden/bp-dod-sda-gateway/models"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )

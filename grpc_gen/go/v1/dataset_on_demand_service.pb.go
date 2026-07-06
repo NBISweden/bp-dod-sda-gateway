@@ -358,8 +358,8 @@ const file_v1_dataset_on_demand_service_proto_rawDesc = "" +
 	"\x16DatasetOnDemandService\x12k\n" +
 	"\x10NewOriginDataset\x12*.dataset_on_demand.NewOriginDatasetRequest\x1a+.dataset_on_demand.NewOriginDatasetResponse\x12}\n" +
 	"\x16RequestDatasetCreation\x120.dataset_on_demand.RequestDatasetCreationRequest\x1a1.dataset_on_demand.RequestDatasetCreationResponse\x12t\n" +
-	"\x13GetDoDDatasetStatus\x12-.dataset_on_demand.GetDoDDatasetStatusRequest\x1a..dataset_on_demand.GetDoDDatasetStatusResponseB\xcd\x01\n" +
-	"\x15com.dataset_on_demandB\x1bDatasetOnDemandServiceProtoP\x01Z;github.com/imi-bigpicture/bp-dod-sda-gateway/grpc_gen/go/v1\xa2\x02\x03DXX\xaa\x02\x0fDatasetOnDemand\xca\x02\x0fDatasetOnDemand\xe2\x02\x1bDatasetOnDemand\\GPBMetadata\xea\x02\x0fDatasetOnDemandb\x06proto3"
+	"\x13GetDoDDatasetStatus\x12-.dataset_on_demand.GetDoDDatasetStatusRequest\x1a..dataset_on_demand.GetDoDDatasetStatusResponseB\xc8\x01\n" +
+	"\x15com.dataset_on_demandB\x1bDatasetOnDemandServiceProtoP\x01Z6github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/v1\xa2\x02\x03DXX\xaa\x02\x0fDatasetOnDemand\xca\x02\x0fDatasetOnDemand\xe2\x02\x1bDatasetOnDemand\\GPBMetadata\xea\x02\x0fDatasetOnDemandb\x06proto3"
 
 var (
 	file_v1_dataset_on_demand_service_proto_rawDescOnce sync.Once

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/internal/observability"
+	"github.com/NBISweden/bp-dod-sda-gateway/internal/observability"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )

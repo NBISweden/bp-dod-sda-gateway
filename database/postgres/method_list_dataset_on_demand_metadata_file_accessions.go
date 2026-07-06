@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/models/metadata_models"
+	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 )
 
 const listDatasetOnDemandMetadataFileAccessionsQuery = "listDatasetOnDemandMetadataFileAccessions"

@@ -6,7 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/models"
+	"github.com/NBISweden/bp-dod-sda-gateway/models"
 )
 
 const insertDatasetOnDemandDatasetQuery = "insertDatasetOnDemandDataset"

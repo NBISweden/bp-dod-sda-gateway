@@ -1,4 +1,4 @@
-module github.com/imi-bigpicture/bp-dod-sda-gateway
+module github.com/NBISweden/bp-dod-sda-gateway
 
 go 1.26
 

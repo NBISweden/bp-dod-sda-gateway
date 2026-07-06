@@ -8,14 +8,14 @@ import (
 
 	"embed"
 
+	"github.com/NBISweden/bp-dod-sda-gateway/database"
+	"github.com/NBISweden/bp-dod-sda-gateway/models"
+	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 	"github.com/XSAM/otelsql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/database"
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/models"
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/models/metadata_models"
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/metric"

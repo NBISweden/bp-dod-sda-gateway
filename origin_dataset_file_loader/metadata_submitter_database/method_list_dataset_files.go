@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/models/metadata_models"
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/origin_dataset_file_loader"
+	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
+	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader"
 )
 
 const listDatasetFilesQuery = "listDatasetFiles"

@@ -3,15 +3,15 @@ package dod_metadata_file_handler
 import (
 	"time"
 
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/internal/config"
+	"github.com/NBISweden/bp-dod-sda-gateway/internal/config"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 var (
-	sdaAPIUrl string
-	remsUrl   string
-	remsUser  string
+	sdaAPIUrl              string
+	remsUrl                string
+	remsUser               string
 	remsKey                string
 	remsDemoWorkflowID     int
 	remsDemoOrganisationID string

@@ -6,9 +6,9 @@ import (
 	"encoding/xml"
 	"fmt"
 
+	"github.com/NBISweden/bp-dod-sda-gateway/internal/observability"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/internal/observability"
 	"github.com/neicnordic/crypt4gh/streaming"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"

@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader"
 	"github.com/XSAM/otelsql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/origin_dataset_file_loader"
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/metric"

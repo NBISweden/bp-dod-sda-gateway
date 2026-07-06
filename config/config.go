@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/internal/config"
+	"github.com/NBISweden/bp-dod-sda-gateway/internal/config"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )

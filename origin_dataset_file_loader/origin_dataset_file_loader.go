@@ -3,7 +3,7 @@ package origin_dataset_file_loader
 import (
 	"context"
 
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/models/metadata_models"
+	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 )
 
 type OriginDatasetFileLoader interface {

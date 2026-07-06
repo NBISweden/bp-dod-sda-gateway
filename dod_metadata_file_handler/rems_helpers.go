@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/internal/observability"
-	"github.com/imi-bigpicture/bp-dod-sda-gateway/models/metadata_models"
+	"github.com/NBISweden/bp-dod-sda-gateway/internal/observability"
+	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 )
 
 func (dmfh *dodMetadataFileHandler) doRemsRequest(ctx context.Context, req *http.Request) ([]byte, error) {
