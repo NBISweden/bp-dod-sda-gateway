@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26-trixie AS builder
 
 ENV GOPATH=$PWD
 ENV CGO_ENABLED=0
@@ -6,7 +6,6 @@ ENV CGO_ENABLED=0
 COPY . .
 
 RUN go build -buildvcs=false -o ./bp-dod-sda-gateway
-RUN echo "nobody:x:65534:65534:nobody:/:/sbin/nologin" > passwd
 
 FROM gcr.io/distroless/static-debian13
 
