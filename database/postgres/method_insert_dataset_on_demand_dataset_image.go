@@ -8,8 +8,7 @@ import (
 const insertDatasetOnDemandDatasetImageQuery = "insertDatasetOnDemandDatasetImage"
 
 func init() {
-	queries[insertDatasetOnDemandDatasetImageQuery] = `
-INSERT INTO dod_image (dod_accession, origin_accession, image_alias)
+	queries[insertDatasetOnDemandDatasetImageQuery] = `INSERT INTO dod_image (dod_accession, origin_accession, image_alias)
 VALUES($1, $2, $3)
 `
 }

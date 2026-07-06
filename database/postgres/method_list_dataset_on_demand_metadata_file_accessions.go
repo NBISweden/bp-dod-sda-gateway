@@ -10,8 +10,7 @@ import (
 const listDatasetOnDemandMetadataFileAccessionsQuery = "listDatasetOnDemandMetadataFileAccessions"
 
 func init() {
-	queries[listDatasetOnDemandMetadataFileAccessionsQuery] = `
-SELECT mf.dataset_accession, mf.type, mf.accession
+	queries[listDatasetOnDemandMetadataFileAccessionsQuery] = `SELECT mf.dataset_accession, mf.type, mf.accession
 FROM dod_dataset_metadata_file AS mf
 INNER JOIN dod_dataset AS dd ON dd.accession = mf.dataset_accession
 WHERE dd.released_at IS NULL

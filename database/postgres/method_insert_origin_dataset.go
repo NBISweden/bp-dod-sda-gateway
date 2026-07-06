@@ -12,8 +12,7 @@ import (
 const insertOriginDatasetQuery = "insertOriginDataset"
 
 func init() {
-	queries[insertOriginDatasetQuery] = `
-INSERT INTO origin_dataset (accession, rems_workflow_id, rems_organisation_id, dataset_xml, image_xml, annotation_xml, observation_xml, observer_xml, policy_xml, sample_xml, staining_xml)
+	queries[insertOriginDatasetQuery] = `INSERT INTO origin_dataset (accession, rems_workflow_id, rems_organisation_id, dataset_xml, image_xml, annotation_xml, observation_xml, observer_xml, policy_xml, sample_xml, staining_xml)
 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 `
 }

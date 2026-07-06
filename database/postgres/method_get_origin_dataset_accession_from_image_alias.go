@@ -13,8 +13,7 @@ import (
 const getOriginDatasetAccessionFromImageAliasQuery = "getOriginDatasetAccessionFromImageAlias"
 
 func init() {
-	queries[getOriginDatasetAccessionFromImageAliasQuery] = `
-SELECT od.accession
+	queries[getOriginDatasetAccessionFromImageAliasQuery] = `SELECT od.accession
 FROM origin_dataset AS od
 INNER JOIN dataset_image AS di ON di.dataset_accession = od.accession
 WHERE di.alias = $1

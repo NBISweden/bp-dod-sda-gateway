@@ -8,8 +8,7 @@ import (
 const setDatasetOnDemandDatasetReleasedQuery = "setDatasetOnDemandDatasetReleased"
 
 func init() {
-	queries[setDatasetOnDemandDatasetReleasedQuery] = `
-UPDATE dod_dataset 
+	queries[setDatasetOnDemandDatasetReleasedQuery] = `UPDATE dod_dataset 
 SET released_at = clock_timestamp() 
 WHERE accession = $1;
 `

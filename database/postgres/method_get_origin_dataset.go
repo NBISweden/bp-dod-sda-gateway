@@ -16,8 +16,7 @@ import (
 const getOriginDatasetQuery = "getOriginDataset"
 
 func init() {
-	queries[getOriginDatasetQuery] = `
-SELECT accession, rems_workflow_id, rems_organisation_id, dataset_xml, image_xml, annotation_xml, observation_xml, observer_xml, policy_xml, sample_xml, staining_xml
+	queries[getOriginDatasetQuery] = `SELECT accession, rems_workflow_id, rems_organisation_id, dataset_xml, image_xml, annotation_xml, observation_xml, observer_xml, policy_xml, sample_xml, staining_xml
 FROM origin_dataset
 WHERE accession = $1
 

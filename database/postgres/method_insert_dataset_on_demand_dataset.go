@@ -14,16 +14,13 @@ const insertDatasetOnDemandDatasetMetadataFileQuery = "insertDatasetOnDemandData
 const insertDatasetOnDemandDatasetCreatedFromOriginQuery = "insertDatasetOnDemandDatasetCreatedFromOrigin"
 
 func init() {
-	queries[insertDatasetOnDemandDatasetQuery] = `
-INSERT INTO dod_dataset (accession, requested_by_user)
+	queries[insertDatasetOnDemandDatasetQuery] = `INSERT INTO dod_dataset (accession, requested_by_user)
 VALUES($1,$2)
 `
-	queries[insertDatasetOnDemandDatasetMetadataFileQuery] = `
-INSERT INTO dod_dataset_metadata_file (dataset_accession, type, accession, xml_content)
+	queries[insertDatasetOnDemandDatasetMetadataFileQuery] = `INSERT INTO dod_dataset_metadata_file (dataset_accession, type, accession, xml_content)
 VALUES($1, $2, $3, $4)
 `
-	queries[insertDatasetOnDemandDatasetCreatedFromOriginQuery] = `
-INSERT INTO dod_dataset_created_from_origin (dod_accession, origin_accession)
+	queries[insertDatasetOnDemandDatasetCreatedFromOriginQuery] = `INSERT INTO dod_dataset_created_from_origin (dod_accession, origin_accession)
 VALUES($1, $2)
 `
 }

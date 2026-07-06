@@ -16,8 +16,7 @@ import (
 const getDatasetOnDemandDatasetRemsMetadataQuery = "getDatasetOnDemandDatasetRemsMetadata"
 
 func init() {
-	queries[getDatasetOnDemandDatasetRemsMetadataQuery] = `
-SELECT md_rems.xml_content
+	queries[getDatasetOnDemandDatasetRemsMetadataQuery] = `SELECT md_rems.xml_content
 FROM dod_dataset AS ddd
 INNER JOIN dod_dataset_metadata_file AS md_rems ON md_rems.type = 'rems' AND ddd.accession = md_rems.dataset_accession 
 WHERE ddd.accession = $1

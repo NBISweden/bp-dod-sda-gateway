@@ -8,8 +8,7 @@ import (
 const insertImageFileQuery = "insertImageFile"
 
 func init() {
-	queries[insertImageFileQuery] = `
-INSERT INTO image_file (dataset_accession, image_alias, accession)
+	queries[insertImageFileQuery] = `INSERT INTO image_file (dataset_accession, image_alias, accession)
 VALUES($1, $2, $3)
 
 `

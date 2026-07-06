@@ -12,8 +12,7 @@ import (
 const isDatasetOnDemandDatasetReleasedQuery = "isDatasetOnDemandDatasetReleased"
 
 func init() {
-	queries[isDatasetOnDemandDatasetReleasedQuery] = `
-SELECT EXISTS(
+	queries[isDatasetOnDemandDatasetReleasedQuery] = `SELECT EXISTS(
 SELECT 1
 FROM dod_dataset  
 WHERE accession = $1
