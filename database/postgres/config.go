@@ -34,7 +34,7 @@ var globalConf = &dbConfig{
 	user:                  "", // No default, needs to be provided by config / InitPostgresSQLDatabase options
 	password:              "", // No default, needs to be provided by config / InitPostgresSQLDatabase options
 	databaseName:          "bp_dod",
-	schema:                "bp_dod",
+	schema:                "",
 	cACert:                "",
 	sslMode:               "prefer",
 	clientCert:            "",
@@ -283,7 +283,7 @@ func (c *dbConfig) clone() *dbConfig {
 
 // buildPostgresConfig builds a postgresql config source string to use with sql.OpenDB().
 func (c *dbConfig) buildPostgresConfig() pq.Config {
-	return pq.Config{
+	conf := pq.Config{
 		Host:        c.host,
 		Port:        c.port,
 		Database:    c.databaseName,
@@ -293,6 +293,9 @@ func (c *dbConfig) buildPostgresConfig() pq.Config {
 		SSLCert:     c.clientCert,
 		SSLKey:      c.clientKey,
 		SSLRootCert: c.cACert,
-		Options:     fmt.Sprintf("-c search_path=%s", c.schema),
 	}
+	if c.schema != "" {
+		conf.Options = fmt.Sprintf("-c search_path=%s", c.schema)
+	}
+	return conf
 }
