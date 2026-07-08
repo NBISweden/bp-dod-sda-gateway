@@ -51,7 +51,7 @@ func (dmfh *dodMetadataFileHandler) createRemsResource(ctx context.Context, rems
 		getEndpoint += "?" + enc
 	}
 
-	resourceGetRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, getEndpoint, nil)
+	resourceGetRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, getEndpoint, nil)
 	if err != nil {
 		return -1, fmt.Errorf("failed to build resources get request: %w", err)
 	}
@@ -134,7 +134,7 @@ func (dmfh *dodMetadataFileHandler) createRemsCatalogueItem(ctx context.Context,
 		catalogueItemsGetEndpoint += "?" + enc
 	}
 
-	catalogueItemsGetRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, catalogueItemsGetEndpoint, nil)
+	catalogueItemsGetRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogueItemsGetEndpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to build catalogue items get request: %w", err)
 	}
