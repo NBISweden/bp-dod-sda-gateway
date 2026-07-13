@@ -214,7 +214,11 @@ func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, data
 		return false, fmt.Errorf("failed to list dataset on demand image accessions: %w", err)
 	}
 
-	for _, datasetFileAccession := range datasetMetadataFiles {
+	for metadataType, datasetFileAccession := range datasetMetadataFiles {
+		// Exclude rems
+		if metadataType == metadata_models.MetadataFileTypeRems {
+			continue
+		}
 		datasetFileAccessions = append(datasetFileAccessions, datasetFileAccession)
 	}
 
@@ -438,6 +442,7 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, 
 
 	reqBody, err := json.Marshal(datasetCreateReq)
 	if err != nil {
+		// TODO
 		return fmt.Errorf("failed to marshal ingest body: %w", err)
 	}
 

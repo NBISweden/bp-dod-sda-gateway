@@ -29,14 +29,14 @@ type Database interface {
 // functions denotes the available database functions
 type functions interface {
 	GetOriginDataset(ctx context.Context, accession string) (*models.OriginDataset, error)
-	GetOriginDatasetAccessionFromImageAlias(ctx context.Context, imageAlias string) (string, error)
+	GetOriginDatasetAccessionFromImageAccession(ctx context.Context, imageAccession string) (string, error)
 	InsertOriginDataset(ctx context.Context, originDataset *models.OriginDataset) error
 
 	InsertDatasetOnDemandDataset(ctx context.Context, dodDataset *models.DatasetOnDemandDataset) error
-	InsertDatasetOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAlias string) error
+	InsertDatasetOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAccession string) error
 
-	InsertDatasetImage(ctx context.Context, datasetAccession, imageAlias string) error
-	InsertImageFile(ctx context.Context, datasetAccession, imageAlias, fileAlias string) error
+	InsertDatasetImage(ctx context.Context, datasetAccession, imageAccession string) error
+	InsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession string) error
 
 	ListDatasetOnDemandMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error)
 

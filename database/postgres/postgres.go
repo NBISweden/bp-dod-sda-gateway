@@ -213,16 +213,16 @@ func (db *pgDb) InsertOriginDataset(ctx context.Context, originDataset *models.O
 	return db.insertOriginDataset(ctx, nil, originDataset)
 }
 
-func (db *pgDb) InsertDatasetImage(ctx context.Context, datasetAccession, imageAlias string) error {
-	return db.insertDatasetImage(ctx, nil, datasetAccession, imageAlias)
+func (db *pgDb) InsertDatasetImage(ctx context.Context, datasetAccession, imageAccession string) error {
+	return db.insertDatasetImage(ctx, nil, datasetAccession, imageAccession)
 }
 
-func (db *pgDb) InsertImageFile(ctx context.Context, datasetAccession, imageAlias, fileAlias string) error {
-	return db.insertImageFile(ctx, nil, datasetAccession, imageAlias, fileAlias)
+func (db *pgDb) InsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession string) error {
+	return db.insertImageFile(ctx, nil, datasetAccession, imageAccession, fileAccession)
 }
 
-func (db *pgDb) GetOriginDatasetAccessionFromImageAlias(ctx context.Context, imageAlias string) (string, error) {
-	return db.getOriginDatasetAccessionFromImageAlias(ctx, nil, imageAlias)
+func (db *pgDb) GetOriginDatasetAccessionFromImageAccession(ctx context.Context, imageAccession string) (string, error) {
+	return db.getOriginDatasetAccessionFromImageAccession(ctx, nil, imageAccession)
 }
 
 func (db *pgDb) GetOriginDataset(ctx context.Context, accession string) (*models.OriginDataset, error) {
@@ -233,8 +233,8 @@ func (db *pgDb) InsertDatasetOnDemandDataset(ctx context.Context, dodDataset *mo
 	return db.insertDatasetOnDemandDataset(ctx, nil, dodDataset)
 }
 
-func (db *pgDb) InsertDatasetOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAlias string) error {
-	return db.insertDatasetOnDemandDatasetImage(ctx, nil, dodAccession, originAccession, imageAlias)
+func (db *pgDb) InsertDatasetOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAccession string) error {
+	return db.insertDatasetOnDemandDatasetImage(ctx, nil, dodAccession, originAccession, imageAccession)
 }
 func (db *pgDb) ListDatasetOnDemandMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error) {
 	return db.listDatasetOnDemandMetadataFileAccessions(ctx, nil)

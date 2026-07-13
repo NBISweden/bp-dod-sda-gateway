@@ -12,12 +12,10 @@ import (
 const isDatasetOnDemandDatasetReleasedQuery = "isDatasetOnDemandDatasetReleased"
 
 func init() {
-	queries[isDatasetOnDemandDatasetReleasedQuery] = `SELECT EXISTS(
-SELECT 1
+	queries[isDatasetOnDemandDatasetReleasedQuery] = `SELECT true
 FROM dod_dataset  
 WHERE accession = $1
 AND released_at IS NOT NULL
-)
 `
 }
 func (db *pgDb) isDatasetOnDemandDatasetReleased(ctx context.Context, tx *sql.Tx, accession string) (bool, error) {

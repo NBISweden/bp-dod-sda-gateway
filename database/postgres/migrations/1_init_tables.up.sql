@@ -16,19 +16,14 @@ CREATE TABLE IF NOT EXISTS origin_dataset
 
 CREATE TABLE IF NOT EXISTS dataset_image
 (
-  id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  dataset_accession TEXT REFERENCES origin_dataset (accession),
-  alias             TEXT NOT NULL,
-  CONSTRAINT dataset_image_unique_idx UNIQUE (dataset_accession, alias)
+  accession         TEXT NOT NULL PRIMARY KEY,
+  dataset_accession TEXT REFERENCES origin_dataset (accession)
 );
 CREATE TABLE IF NOT EXISTS image_file
 (
-  id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  accession         TEXT NOT NULL PRIMARY KEY,
   dataset_accession TEXT REFERENCES origin_dataset (accession),
-  image_alias       TEXT        NOT NULL,
-
-  accession         TEXT UNIQUE NOT NULL,
-  FOREIGN KEY (dataset_accession, image_alias) REFERENCES dataset_image (dataset_accession, alias)
+  image_accession   TEXT NOT NULL REFERENCES dataset_image (accession)
 );
 
 CREATE TABLE IF NOT EXISTS dod_dataset
@@ -66,8 +61,7 @@ CREATE TABLE IF NOT EXISTS dod_image
   id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   dod_accession    TEXT REFERENCES dod_dataset (accession),
   origin_accession TEXT REFERENCES origin_dataset (accession),
-  image_alias      TEXT NOT NULL,
+  image_accession  TEXT NOT NULL REFERENCES dataset_image (accession),
 
-  FOREIGN KEY (origin_accession, image_alias) REFERENCES dataset_image (dataset_accession, alias),
-  CONSTRAINT dod_image_unique_idx UNIQUE (dod_accession, origin_accession, image_alias)
+  CONSTRAINT dod_image_unique_idx UNIQUE (dod_accession, image_accession)
 )

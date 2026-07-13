@@ -151,11 +151,11 @@ func (*NewOriginDatasetResponse) Descriptor() ([]byte, []int) {
 }
 
 type RequestDatasetCreationRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ImageAliases  []string               `protobuf:"bytes,1,rep,name=image_aliases,json=imageAliases,proto3" json:"image_aliases,omitempty"`
-	User          string                 `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	ImageAccessions []string               `protobuf:"bytes,1,rep,name=image_accessions,json=imageAccessions,proto3" json:"image_accessions,omitempty"`
+	User            string                 `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *RequestDatasetCreationRequest) Reset() {
@@ -188,9 +188,9 @@ func (*RequestDatasetCreationRequest) Descriptor() ([]byte, []int) {
 	return file_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *RequestDatasetCreationRequest) GetImageAliases() []string {
+func (x *RequestDatasetCreationRequest) GetImageAccessions() []string {
 	if x != nil {
-		return x.ImageAliases
+		return x.ImageAccessions
 	}
 	return nil
 }
@@ -341,9 +341,9 @@ const file_v1_dataset_on_demand_service_proto_rawDesc = "" +
 	"\"v1/dataset_on_demand_service.proto\x12\x11dataset_on_demand\"F\n" +
 	"\x17NewOriginDatasetRequest\x12+\n" +
 	"\x11dataset_accession\x18\x01 \x01(\tR\x10datasetAccession\"\x1a\n" +
-	"\x18NewOriginDatasetResponse\"X\n" +
-	"\x1dRequestDatasetCreationRequest\x12#\n" +
-	"\rimage_aliases\x18\x01 \x03(\tR\fimageAliases\x12\x12\n" +
+	"\x18NewOriginDatasetResponse\"^\n" +
+	"\x1dRequestDatasetCreationRequest\x12)\n" +
+	"\x10image_accessions\x18\x01 \x03(\tR\x0fimageAccessions\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\"T\n" +
 	"\x1eRequestDatasetCreationResponse\x122\n" +
 	"\x15dod_dataset_accession\x18\x01 \x01(\tR\x13dodDatasetAccession\"P\n" +

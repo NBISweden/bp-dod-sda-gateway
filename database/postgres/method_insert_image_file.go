@@ -8,12 +8,12 @@ import (
 const insertImageFileQuery = "insertImageFile"
 
 func init() {
-	queries[insertImageFileQuery] = `INSERT INTO image_file (dataset_accession, image_alias, accession)
+	queries[insertImageFileQuery] = `INSERT INTO image_file (dataset_accession, image_accession, accession)
 VALUES($1, $2, $3)
 
 `
 }
-func (db *pgDb) insertImageFile(ctx context.Context, tx *sql.Tx, datasetAccession, imageAlias, accession string) error {
+func (db *pgDb) insertImageFile(ctx context.Context, tx *sql.Tx, datasetAccession, imageAccession, accession string) error {
 	stmt, err := db.getPreparedStmt(tx, insertImageFileQuery)
 	if err != nil {
 		return err
@@ -21,7 +21,7 @@ func (db *pgDb) insertImageFile(ctx context.Context, tx *sql.Tx, datasetAccessio
 
 	result, err := stmt.ExecContext(ctx,
 		datasetAccession,
-		imageAlias,
+		imageAccession,
 		accession,
 	)
 	if err != nil {

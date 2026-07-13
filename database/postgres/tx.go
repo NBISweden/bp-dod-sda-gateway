@@ -31,16 +31,16 @@ func (tx *pgTx) InsertOriginDataset(ctx context.Context, originDataset *models.O
 	return tx.insertOriginDataset(ctx, tx.tx, originDataset)
 }
 
-func (tx *pgTx) InsertDatasetImage(ctx context.Context, datasetAccession, imageAlias string) error {
-	return tx.insertDatasetImage(ctx, tx.tx, datasetAccession, imageAlias)
+func (tx *pgTx) InsertDatasetImage(ctx context.Context, datasetAccession, imageAccession string) error {
+	return tx.insertDatasetImage(ctx, tx.tx, datasetAccession, imageAccession)
 }
 
-func (tx *pgTx) InsertImageFile(ctx context.Context, datasetAccession, imageAlias, fileAlias string) error {
-	return tx.insertImageFile(ctx, tx.tx, datasetAccession, imageAlias, fileAlias)
+func (tx *pgTx) InsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession string) error {
+	return tx.insertImageFile(ctx, tx.tx, datasetAccession, imageAccession, fileAccession)
 }
 
-func (tx *pgTx) GetOriginDatasetAccessionFromImageAlias(ctx context.Context, imageAlias string) (string, error) {
-	return tx.getOriginDatasetAccessionFromImageAlias(ctx, tx.tx, imageAlias)
+func (tx *pgTx) GetOriginDatasetAccessionFromImageAccession(ctx context.Context, imageAccession string) (string, error) {
+	return tx.getOriginDatasetAccessionFromImageAccession(ctx, tx.tx, imageAccession)
 }
 
 func (tx *pgTx) GetOriginDataset(ctx context.Context, accession string) (*models.OriginDataset, error) {
@@ -51,8 +51,8 @@ func (tx *pgTx) InsertDatasetOnDemandDataset(ctx context.Context, dodDataset *mo
 	return tx.insertDatasetOnDemandDataset(ctx, tx.tx, dodDataset)
 }
 
-func (tx *pgTx) InsertDatasetOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAlias string) error {
-	return tx.insertDatasetOnDemandDatasetImage(ctx, tx.tx, dodAccession, originAccession, imageAlias)
+func (tx *pgTx) InsertDatasetOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAccession string) error {
+	return tx.insertDatasetOnDemandDatasetImage(ctx, tx.tx, dodAccession, originAccession, imageAccession)
 }
 func (tx *pgTx) ListDatasetOnDemandMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error) {
 	return tx.listDatasetOnDemandMetadataFileAccessions(ctx, nil)

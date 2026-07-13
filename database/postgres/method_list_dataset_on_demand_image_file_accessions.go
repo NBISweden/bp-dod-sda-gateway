@@ -10,18 +10,18 @@ const listDatasetOnDemandImageFileAccessionsQuery = "listDatasetOnDemandImageFil
 func init() {
 	queries[listDatasetOnDemandImageFileAccessionsQuery] = `SELECT if.accession
 FROM dod_image as dodi
-INNER JOIN dataset_image AS di ON di.alias = dodi.image_alias AND di.dataset_accession = dodi.origin_accession
-INNER JOIN image_file AS if ON if.image_alias = di.alias AND if.dataset_accession = di.dataset_accession
+INNER JOIN dataset_image AS di ON di.accession = dodi.image_accession
+INNER JOIN image_file AS if ON if.image_accession = di.accession
 WHERE dodi.dod_accession = $1
 `
 }
-func (db *pgDb) listDatasetOnDemandImageFileAccessions(ctx context.Context, tx *sql.Tx, dataseAccession string) ([]string, error) {
+func (db *pgDb) listDatasetOnDemandImageFileAccessions(ctx context.Context, tx *sql.Tx, datasetAccession string) ([]string, error) {
 	stmt, err := db.getPreparedStmt(tx, listDatasetOnDemandImageFileAccessionsQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := stmt.QueryContext(ctx, dataseAccession)
+	rows, err := stmt.QueryContext(ctx, datasetAccession)
 	if err != nil {
 		return nil, err
 	}

@@ -123,6 +123,8 @@ func run() error {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
+	slog.Info("DatasetOnDemandService started", "port", config.DodServicePort())
+
 	select {
 	case <-sigc:
 		return nil

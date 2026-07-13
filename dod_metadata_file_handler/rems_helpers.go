@@ -129,7 +129,7 @@ func (dmfh *dodMetadataFileHandler) createRemsCatalogueItem(ctx context.Context,
 		return fmt.Errorf("invalid base URL when building catalogue items get endpoint: %w", err)
 	}
 	query := url.Values{}
-	query.Set("resid", datasetAccession)
+	query.Set("resource", datasetAccession)
 	if enc := query.Encode(); enc != "" {
 		catalogueItemsGetEndpoint += "?" + enc
 	}
@@ -168,7 +168,7 @@ func (dmfh *dodMetadataFileHandler) createRemsCatalogueItem(ctx context.Context,
 	}{
 		ResourceID: remsResourceID,
 	}
-	catalogueItemsCreateReq.Localizations.En.Title = "Dataset On Demand Dataset"
+	catalogueItemsCreateReq.Localizations.En.Title = fmt.Sprintf("Dataset On Demand Dataset: %s", datasetAccession)
 
 	// TODO how to create resource from multiple orgs???
 	for _, rems := range remsMetadata.Rems {

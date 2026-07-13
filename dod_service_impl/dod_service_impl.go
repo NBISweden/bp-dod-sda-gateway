@@ -2,6 +2,7 @@ package dod_service_impl
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -170,8 +171,14 @@ func (d *dodServiceImpl) NewOriginDataset(ctx context.Context, c *connect.Reques
 	}
 
 	for _, image := range originDataset.Image.Images {
-		if err := tx.InsertDatasetImage(ctx, originDataset.Accession, image.Alias); err != nil {
-			slog.Warn("failed to insert dataset image to database", "error", err, "dataset-accession", originDataset.Accession, "image-alias", image.Alias)
+		if image.Accession == "" {
+			slog.Warn("image does not have an accession id", "error", err, "dataset-accession", originDataset.Accession, "image-alias", image.Alias)
+
+			return nil, connect.NewError(connect.CodeFailedPrecondition, nil)
+		}
+
+		if err := tx.InsertDatasetImage(ctx, originDataset.Accession, image.Accession); err != nil {
+			slog.Warn("failed to insert dataset image to database", "error", err, "dataset-accession", originDataset.Accession, "image-accession", image.Accession)
 
 			return nil, connect.NewError(connect.CodeInternal, nil)
 		}
@@ -181,8 +188,8 @@ func (d *dodServiceImpl) NewOriginDataset(ctx context.Context, c *connect.Reques
 				if strings.HasSuffix(strings.TrimSuffix(downloadPath, ".c4gh"), strings.TrimSuffix(file.Filename, ".c4gh")) {
 					delete(fileAccessions, downloadPath)
 					found = true
-					if err := tx.InsertImageFile(ctx, originDataset.Accession, image.Alias, fileAccession); err != nil {
-						slog.Warn("failed to insert image file to database", "error", err, "dataset-accession", originDataset.Accession, "image-alias", image.Alias, "file-accession", fileAccession)
+					if err := tx.InsertImageFile(ctx, originDataset.Accession, image.Accession, fileAccession); err != nil {
+						slog.Warn("failed to insert image file to database", "error", err, "dataset-accession", originDataset.Accession, "image-accession", image.Accession, "file-accession", fileAccession)
 
 						return nil, connect.NewError(connect.CodeInternal, nil)
 					}
@@ -209,8 +216,8 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 	ctx, span := observability.Tracer().Start(ctx, "RequestDatasetCreation")
 	defer span.End()
 
-	if len(c.Msg.GetImageAliases()) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("no image aliases requested"))
+	if len(c.Msg.GetImageAccessions()) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("no image accessions requested"))
 	}
 	if c.Msg.GetUser() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user requesting dataset on demand must be provided"))
@@ -231,27 +238,27 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 		}
 	}()
 
-	for _, imageAlias := range c.Msg.GetImageAliases() {
+	for _, imageAccession := range c.Msg.GetImageAccessions() {
 
-		originDatasetAccession, err := tx.GetOriginDatasetAccessionFromImageAlias(ctx, imageAlias)
+		originDatasetAccession, err := tx.GetOriginDatasetAccessionFromImageAccession(ctx, imageAccession)
 		if err != nil {
-			slog.Warn("failed to get origin dataset accession from image alias", "error", err, "image-alias", imageAlias)
+			slog.Warn("failed to get origin dataset accession from image accession", "error", err, "image-accession", imageAccession)
 
 			return nil, connect.NewError(connect.CodeInternal, nil)
 		}
 
 		if originDatasetAccession == "" {
-			slog.Info("no dataset found from image alias", "image-alias", imageAlias)
+			slog.Info("no dataset found from image accession", "image-accession", imageAccession)
 
 			return nil, connect.NewError(connect.CodeNotFound, nil)
 		}
 		if originDatasetImages[originDatasetAccession] == nil {
-			originDatasetImages[originDatasetAccession] = []string{imageAlias}
+			originDatasetImages[originDatasetAccession] = []string{imageAccession}
 
 			continue
 		}
 
-		originDatasetImages[originDatasetAccession] = append(originDatasetImages[originDatasetAccession], imageAlias)
+		originDatasetImages[originDatasetAccession] = append(originDatasetImages[originDatasetAccession], imageAccession)
 	}
 
 	originDatasets := make(map[string]*models.OriginDataset)
@@ -314,7 +321,7 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 	for originAccession, imageAliases := range originDatasetImages {
 		for _, imageAlias := range imageAliases {
 			if err := tx.InsertDatasetOnDemandDatasetImage(ctx, dodDataset.Accession, originAccession, imageAlias); err != nil {
-				slog.Warn("failed to insert dataset on demand dataset image", "error", err, "origin-accession", originAccession, "image-alias", imageAlias)
+				slog.Warn("failed to insert dataset on demand dataset image", "error", err, "origin-accession", originAccession, "image-accession", imageAlias)
 
 				return nil, connect.NewError(connect.CodeInternal, nil)
 			}
@@ -348,6 +355,9 @@ func (d *dodServiceImpl) GetDoDDatasetStatus(ctx context.Context, c *connect.Req
 
 	dodDatasetReleased, err := database.IsDatasetOnDemandDatasetPublished(ctx, c.Msg.GetDodDatasetAccession())
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, nil)
+		}
 		slog.Warn("failed to check if dataset on demand dataset is publish", "error", err, "accession", c.Msg.GetDodDatasetAccession())
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
