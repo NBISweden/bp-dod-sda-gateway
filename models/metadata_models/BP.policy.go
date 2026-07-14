@@ -1,6 +1,8 @@
 package metadata_models
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+)
 
 type PolicySet struct {
 	XMLName  xml.Name `xml:"POLICY_SET"`
@@ -53,18 +55,21 @@ func (p *Policy) Equal(compare *Policy) bool {
 		return true
 	}
 
-	if p.Accession != compare.Accession {
-		return false
-	}
-	if p.Alias != compare.Alias {
-		return false
-	}
-	if p.DatasetRef.Alias != compare.DatasetRef.Alias {
-		return false
-	}
-	if p.DatasetRef.Accession != compare.DatasetRef.Accession {
-		return false
-	}
+	// Not comparing Policy accession or alias
+	//if p.Accession != compare.Accession {
+	//	return false
+	//}
+	//if p.Alias != compare.Alias {
+	//	return false
+	//}
+
+	// Not comparing datasetRef accession or alias
+	//if p.DatasetRef.Alias != compare.DatasetRef.Alias {
+	//	return false
+	//}
+	//if p.DatasetRef.Accession != compare.DatasetRef.Accession {
+	//	return false
+	//}
 
 	return p.Attributes.Equal(&compare.Attributes)
 }

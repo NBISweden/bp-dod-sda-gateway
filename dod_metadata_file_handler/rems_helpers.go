@@ -84,6 +84,10 @@ func (dmfh *dodMetadataFileHandler) createRemsResource(ctx context.Context, rems
 	for _, rems := range remsMetadata.Rems {
 		resourcesCreateReq.Organization.OrganizationID = rems.OrganisationId
 	}
+	// Override values from rems.xml with hardcoded values when connected to a Demo rems instance
+	if remsDemoOrganisationID != "" {
+		resourcesCreateReq.Organization.OrganizationID = remsDemoOrganisationID
+	}
 
 	reqBody, err := json.Marshal(resourcesCreateReq)
 	if err != nil {

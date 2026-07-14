@@ -230,7 +230,7 @@ func (sa *SetAttribute) Equal(compare *SetAttribute) bool {
 		return true
 	}
 
-	if compare.Tag != sa.Tag {
+	if sa.Tag != compare.Tag {
 		return false
 	}
 
@@ -295,7 +295,7 @@ func (ns *NullableString) Equal(compare *NullableString) bool {
 		return true
 	}
 
-	return &compare.Value == &ns.Value
+	return *ns.Value == *compare.Value
 }
 
 func (ns *NullableString) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
@@ -375,7 +375,7 @@ func (nf *NullableFloat) Equal(compare *NullableFloat) bool {
 		return true
 	}
 
-	return &compare.Value == &nf.Value
+	return *compare.Value == *nf.Value
 }
 
 func (nf *NullableFloat) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
@@ -515,7 +515,7 @@ func (na *NullableAttributes) Equal(compare *NullableAttributes) bool {
 		return true
 	}
 
-	return compare.Value.Equal(compare.Value)
+	return na.Value.Equal(compare.Value)
 }
 
 type NullableCodeAttributeValue struct {

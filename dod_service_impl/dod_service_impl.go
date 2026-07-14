@@ -302,7 +302,7 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("can not combine images from datasets originating from different DaCs"))
 		}
 
-		if ensureSameTou.Equal(originDataset.Policy) {
+		if !ensureSameTou.Equal(originDataset.Policy) {
 			slog.Info("user tried to combine datasets with different terms of use")
 
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("can not combine images from datasets with different terms of use"))
@@ -430,9 +430,13 @@ func buildDoDDataset(ctx context.Context, originDatasets map[string]*models.Orig
 	for originDatasetAccession, originDataset := range originDatasets {
 		dodDatasetMetadata.OriginDatasetAccessions = append(dodDatasetMetadata.OriginDatasetAccessions, originDatasetAccession)
 
-		// Just add policies from first orign dataset as they should all be the same
-		if len(dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies) == 0 {
-			dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies = append(dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies, originDataset.Policy.Policies...)
+		// Just add policies from one rigin dataset as they should all be the same
+		if len(originDataset.Policy.Policies) != 0 {
+			dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies = originDataset.Policy.Policies
+			dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies[0].DatasetRef = metadata_models.Reference{
+				Alias:     dodDatasetMetadata.Accession,
+				Accession: dodDatasetMetadata.Accession,
+			}
 		}
 
 		if remsEntry, ok := remsEntries[originDataset.RemsWorkflowID]; ok {
@@ -488,12 +492,12 @@ func buildDoDDataset(ctx context.Context, originDatasets map[string]*models.Orig
 
 		imagesInDataset := datasetImages[originDatasetAccession]
 
-		for _, imageAlias := range imagesInDataset {
+		for _, imageAccession := range imagesInDataset {
 
 			var slideAlias string
 
 			for _, originImage := range originDataset.Image.Images {
-				if originImage.Alias != imageAlias {
+				if originImage.Accession != imageAccession {
 					continue
 				}
 				slideAlias = originImage.ImageOf.Alias
@@ -589,7 +593,7 @@ func buildDoDDataset(ctx context.Context, originDatasets map[string]*models.Orig
 					(originObservation.SlideRef != nil && originObservation.SlideRef.Alias == slideAlias) ||
 					(originObservation.BlockRef != nil && originObservation.BlockRef.Alias == blockAlias) ||
 					(originObservation.BiologicalBeingRef != nil && originObservation.BiologicalBeingRef.Alias == biologicalBeingsAlias) ||
-					(originObservation.ImageRef != nil && originObservation.ImageRef.Alias == imageAlias) {
+					(originObservation.ImageRef != nil && originObservation.ImageRef.Accession == imageAccession) {
 
 					observations[originObservation.Alias] = originObservation
 					for _, observerReference := range originObservation.ObserverRef {
@@ -694,7 +698,7 @@ func buildDoDDataset(ctx context.Context, originDatasets map[string]*models.Orig
 		dodDatasetMetadata.ObserverMetadata = &models.MetadataFile[*metadata_models.ObserverSet]{
 			Accession: uuid.NewString(),
 			MetadataSet: &metadata_models.ObserverSet{
-				Observers: make([]metadata_models.Observer, len(observers)),
+				Observers: make([]metadata_models.Observer, 0, len(observers)),
 			},
 		}
 	}

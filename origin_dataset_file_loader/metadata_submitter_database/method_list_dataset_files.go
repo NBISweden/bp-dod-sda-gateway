@@ -29,7 +29,7 @@ func metadataTypeFromPath(path string) metadata_models.MetadataFileType {
 	case strings.HasSuffix(path, "METADATA/observer.xml.c4gh"):
 		return metadata_models.MetadataFileTypeObserver
 	case strings.HasSuffix(path, "METADATA/policy.xml.c4gh"):
-		return metadata_models.MetadataFileTypeRems
+		return metadata_models.MetadataFileTypePolicy
 	case strings.HasSuffix(path, "METADATA/sample.xml.c4gh"):
 		return metadata_models.MetadataFileTypeSample
 	case strings.HasSuffix(path, "METADATA/staining.xml.c4gh"):

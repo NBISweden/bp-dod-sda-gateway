@@ -192,7 +192,7 @@ func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, data
 		}
 	}
 
-	if !allReady {
+	if !allReady || len(metadataFiles) == 0 {
 		return false, nil
 	}
 
@@ -225,6 +225,9 @@ func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, data
 	if err := dmfh.triggerDatasetCreation(ctx, datasetAccession, datasetFileAccessions); err != nil {
 		return false, fmt.Errorf("failed to trigger dataset creation: %w", err)
 	}
+
+	// Small sleep to allow the dataset creation to be processed, as otherwise sda-api will respond with not found while mapper is processing creation request
+	time.Sleep(5 * time.Second)
 
 	if err := dmfh.triggerDatasetRelease(ctx, datasetAccession); err != nil {
 		return false, fmt.Errorf("failed to trigger dataset release: %w", err)

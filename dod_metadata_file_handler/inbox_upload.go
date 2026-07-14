@@ -1,10 +1,9 @@
 package dod_metadata_file_handler
 
 import (
-	"bytes"
 	"context"
 	"encoding/xml"
-	"fmt"
+	"io"
 
 	"github.com/NBISweden/bp-dod-sda-gateway/internal/observability"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -18,31 +17,40 @@ func (dmfh *dodMetadataFileHandler) marshalEncryptAndUploadFile(ctx context.Cont
 	ctx, span := observability.Tracer().Start(ctx, "marshalEncryptAndUploadFile", trace.WithAttributes(attribute.String("file-path", filePath)))
 	defer span.End()
 
-	encryptedContent := bytes.Buffer{}
-	crypt4GHWriter, err := streaming.NewCrypt4GHWriterWithoutPrivateKey(&encryptedContent, [][32]byte{dmfh.c4ghPublicKey}, nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
+	reader, writer := io.Pipe()
+
+	go func() {
+		crypt4GHWriter, err := streaming.NewCrypt4GHWriterWithoutPrivateKey(writer, [][32]byte{dmfh.c4ghPublicKey}, nil)
+		if err != nil {
+			_ = writer.CloseWithError(err)
+		}
+
+		enc := xml.NewEncoder(crypt4GHWriter)
+		defer func() {
+			_ = enc.Close()
+		}()
+
+		if err := enc.Encode(metadata); err != nil {
+			_ = writer.CloseWithError(err)
+			_ = crypt4GHWriter.Close()
+		}
 		_ = crypt4GHWriter.Close()
+
+		_ = writer.Close()
 	}()
 
-	xmlContent, err := xml.Marshal(metadata)
-	if err != nil {
-		return fmt.Errorf("failed to marshal observation: %w", err)
-	}
-	if _, err := crypt4GHWriter.Write(xmlContent); err != nil {
-		return err
-	}
-
-	// TODO better c4gh writing without needing to read it all into a new reader
-	_, err = dmfh.transferManagerClient.UploadObject(ctx, &transfermanager.UploadObjectInput{
-		Body:   bytes.NewReader(encryptedContent.Bytes()),
+	_, err := dmfh.transferManagerClient.UploadObject(ctx, &transfermanager.UploadObjectInput{
+		Body:   reader,
 		Bucket: aws.String(dmfh.uploadUser),
 		Key:    aws.String(filePath + ".c4gh"),
 	})
-
 	if err != nil {
+		_ = reader.Close()
+
+		return err
+	}
+
+	if err := reader.Close(); err != nil {
 		return err
 	}
 
