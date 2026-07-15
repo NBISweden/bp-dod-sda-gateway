@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/NBISweden/bp-dod-sda-gateway/internal/observability"
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
+	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )

@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"github.com/NBISweden/bp-dod-sda-gateway/database"
-	"github.com/NBISweden/bp-dod-sda-gateway/internal/observability"
 	"github.com/NBISweden/bp-dod-sda-gateway/models"
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
+	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -445,8 +445,7 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, 
 
 	reqBody, err := json.Marshal(datasetCreateReq)
 	if err != nil {
-		// TODO
-		return fmt.Errorf("failed to marshal ingest body: %w", err)
+		return fmt.Errorf("failed to marshal dataset request body: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(reqBody))

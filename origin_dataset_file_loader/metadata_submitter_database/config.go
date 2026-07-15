@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/NBISweden/bp-dod-sda-gateway/internal/config"
+	"github.com/NBISweden/bp-dod-sda-gateway/pkg/config"
 	"github.com/lib/pq"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"

@@ -20,9 +20,9 @@ import (
 	"github.com/NBISweden/bp-dod-sda-gateway/dod_metadata_file_handler"
 	"github.com/NBISweden/bp-dod-sda-gateway/dod_service_impl"
 	dodservice "github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/v1/v1connect"
-	configpkg "github.com/NBISweden/bp-dod-sda-gateway/internal/config"
-	"github.com/NBISweden/bp-dod-sda-gateway/internal/observability"
 	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader/metadata_submitter_database"
+	configpkg "github.com/NBISweden/bp-dod-sda-gateway/pkg/config"
+	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
 )
 
 func main() {

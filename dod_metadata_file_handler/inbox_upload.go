@@ -5,7 +5,7 @@ import (
 	"encoding/xml"
 	"io"
 
-	"github.com/NBISweden/bp-dod-sda-gateway/internal/observability"
+	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/neicnordic/crypt4gh/streaming"
