@@ -3,6 +3,7 @@ package metadata_submitter_database
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
@@ -59,7 +60,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 	}()
 
 	for rows.Next() {
-
 		var metadataSetEntryXmlContent []byte
 		var entryType string
 		if err := rows.Scan(&metadataSetEntryXmlContent, &entryType); err != nil {
@@ -68,7 +68,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 		switch entryType {
 		case "dataset":
-
 			var datasetEntry metadata_models.Dataset
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &datasetEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal dataset: %w", err)
@@ -76,7 +75,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 			dst.(*metadata_models.DatasetSet).Dataset = append(dst.(*metadata_models.DatasetSet).Dataset, datasetEntry)
 		case "image":
-
 			var imageEntry metadata_models.Image
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &imageEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal image: %w", err)
@@ -84,7 +82,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 			dst.(*metadata_models.ImageSet).Images = append(dst.(*metadata_models.ImageSet).Images, imageEntry)
 		case "annotation":
-
 			var annotationEntry metadata_models.Annotation
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &annotationEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal annotation: %w", err)
@@ -92,7 +89,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 			dst.(*metadata_models.AnnotationSet).Annotation = append(dst.(*metadata_models.AnnotationSet).Annotation, annotationEntry)
 		case "observation":
-
 			var observationEntry metadata_models.Observation
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &observationEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal observation: %w", err)
@@ -100,7 +96,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 			dst.(*metadata_models.ObservationSet).Observations = append(dst.(*metadata_models.ObservationSet).Observations, observationEntry)
 		case "observer":
-
 			var observerEntry metadata_models.Observer
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &observerEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal observer: %w", err)
@@ -108,7 +103,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 			dst.(*metadata_models.ObserverSet).Observers = append(dst.(*metadata_models.ObserverSet).Observers, observerEntry)
 		case "policy":
-
 			var policyEntry metadata_models.Policy
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &policyEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal policy: %w", err)
@@ -116,7 +110,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 			dst.(*metadata_models.PolicySet).Policies = append(dst.(*metadata_models.PolicySet).Policies, policyEntry)
 		case "slide":
-
 			var slideEntry metadata_models.Slide
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &slideEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal slide: %w", err)
@@ -124,7 +117,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 			dst.(*metadata_models.SampleSet).Slides = append(dst.(*metadata_models.SampleSet).Slides, slideEntry)
 		case "block":
-
 			var blockEntry metadata_models.Block
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &blockEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal block: %w", err)
@@ -132,7 +124,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 			dst.(*metadata_models.SampleSet).Blocks = append(dst.(*metadata_models.SampleSet).Blocks, blockEntry)
 		case "case":
-
 			var caseEntry metadata_models.Case
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &caseEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal case: %w", err)
@@ -140,7 +131,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 			dst.(*metadata_models.SampleSet).Cases = append(dst.(*metadata_models.SampleSet).Cases, caseEntry)
 		case "specimen":
-
 			var specimenEntry metadata_models.Specimen
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &specimenEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal specimen: %w", err)
@@ -148,7 +138,6 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 			dst.(*metadata_models.SampleSet).Specimens = append(dst.(*metadata_models.SampleSet).Specimens, specimenEntry)
 		case "biological_being":
-
 			var biologicalBeingEntry metadata_models.BiologicalBeing
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &biologicalBeingEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal biological being: %w", err)
@@ -156,19 +145,16 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 
 			dst.(*metadata_models.SampleSet).BiologicalBeings = append(dst.(*metadata_models.SampleSet).BiologicalBeings, biologicalBeingEntry)
 		case "staining":
-
 			var stainingEntry metadata_models.Staining
 			if err := xml.Unmarshal(metadataSetEntryXmlContent, &stainingEntry); err != nil {
 				return fmt.Errorf("failed to unmarshal staining: %w", err)
 			}
 
 			dst.(*metadata_models.StainingSet).Staining = append(dst.(*metadata_models.StainingSet).Staining, stainingEntry)
+		default:
+			return errors.New("unknown metadata entry")
 		}
 	}
 
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	return nil
+	return rows.Err()
 }

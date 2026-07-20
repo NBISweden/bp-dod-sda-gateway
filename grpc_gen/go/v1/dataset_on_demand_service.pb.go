@@ -203,10 +203,10 @@ func (x *RequestDatasetCreationRequest) GetUser() string {
 }
 
 type RequestDatasetCreationResponse struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	DodDatasetAccession string                 `protobuf:"bytes,1,opt,name=dod_dataset_accession,json=dodDatasetAccession,proto3" json:"dod_dataset_accession,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	OnDemandDatasetAccession string                 `protobuf:"bytes,1,opt,name=on_demand_dataset_accession,json=onDemandDatasetAccession,proto3" json:"on_demand_dataset_accession,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *RequestDatasetCreationResponse) Reset() {
@@ -239,18 +239,18 @@ func (*RequestDatasetCreationResponse) Descriptor() ([]byte, []int) {
 	return file_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *RequestDatasetCreationResponse) GetDodDatasetAccession() string {
+func (x *RequestDatasetCreationResponse) GetOnDemandDatasetAccession() string {
 	if x != nil {
-		return x.DodDatasetAccession
+		return x.OnDemandDatasetAccession
 	}
 	return ""
 }
 
 type GetDoDDatasetStatusRequest struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	DodDatasetAccession string                 `protobuf:"bytes,1,opt,name=dod_dataset_accession,json=dodDatasetAccession,proto3" json:"dod_dataset_accession,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	OnDemandDatasetAccession string                 `protobuf:"bytes,1,opt,name=on_demand_dataset_accession,json=onDemandDatasetAccession,proto3" json:"on_demand_dataset_accession,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *GetDoDDatasetStatusRequest) Reset() {
@@ -283,9 +283,9 @@ func (*GetDoDDatasetStatusRequest) Descriptor() ([]byte, []int) {
 	return file_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *GetDoDDatasetStatusRequest) GetDodDatasetAccession() string {
+func (x *GetDoDDatasetStatusRequest) GetOnDemandDatasetAccession() string {
 	if x != nil {
-		return x.DodDatasetAccession
+		return x.OnDemandDatasetAccession
 	}
 	return ""
 }
@@ -344,11 +344,11 @@ const file_v1_dataset_on_demand_service_proto_rawDesc = "" +
 	"\x18NewOriginDatasetResponse\"^\n" +
 	"\x1dRequestDatasetCreationRequest\x12)\n" +
 	"\x10image_accessions\x18\x01 \x03(\tR\x0fimageAccessions\x12\x12\n" +
-	"\x04user\x18\x02 \x01(\tR\x04user\"T\n" +
-	"\x1eRequestDatasetCreationResponse\x122\n" +
-	"\x15dod_dataset_accession\x18\x01 \x01(\tR\x13dodDatasetAccession\"P\n" +
-	"\x1aGetDoDDatasetStatusRequest\x122\n" +
-	"\x15dod_dataset_accession\x18\x01 \x01(\tR\x13dodDatasetAccession\"\xb4\x01\n" +
+	"\x04user\x18\x02 \x01(\tR\x04user\"_\n" +
+	"\x1eRequestDatasetCreationResponse\x12=\n" +
+	"\x1bon_demand_dataset_accession\x18\x01 \x01(\tR\x18onDemandDatasetAccession\"[\n" +
+	"\x1aGetDoDDatasetStatusRequest\x12=\n" +
+	"\x1bon_demand_dataset_accession\x18\x01 \x01(\tR\x18onDemandDatasetAccession\"\xb4\x01\n" +
 	"\x1bGetDoDDatasetStatusResponse\x12M\n" +
 	"\x06status\x18\x01 \x01(\x0e25.dataset_on_demand.GetDoDDatasetStatusResponse.StatusR\x06status\"F\n" +
 	"\x06Status\x12\x12\n" +

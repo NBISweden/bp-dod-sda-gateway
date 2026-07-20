@@ -297,5 +297,6 @@ func (c *dbConfig) buildPostgresConfig() pq.Config {
 	if c.schema != "" {
 		conf.Options = fmt.Sprintf("-c search_path=%s", c.schema)
 	}
+
 	return conf
 }

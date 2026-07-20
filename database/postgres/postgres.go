@@ -14,7 +14,7 @@ import (
 	"github.com/XSAM/otelsql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/golang-migrate/migrate/v4/source/file" // Imported to support using the embed migrationsFS as source for migrations
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
@@ -229,12 +229,12 @@ func (db *pgDb) GetOriginDataset(ctx context.Context, accession string) (*models
 	return db.getOriginDataset(ctx, nil, accession)
 }
 
-func (db *pgDb) InsertDatasetOnDemandDataset(ctx context.Context, dodDataset *models.DatasetOnDemandDataset) error {
-	return db.insertDatasetOnDemandDataset(ctx, nil, dodDataset)
+func (db *pgDb) InsertOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error {
+	return db.insertOnDemandDataset(ctx, nil, dodDataset)
 }
 
-func (db *pgDb) InsertDatasetOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAccession string) error {
-	return db.insertDatasetOnDemandDatasetImage(ctx, nil, dodAccession, originAccession, imageAccession)
+func (db *pgDb) InsertOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAccession string) error {
+	return db.insertOnDemandDatasetImage(ctx, nil, dodAccession, originAccession, imageAccession)
 }
 func (db *pgDb) ListDatasetOnDemandMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error) {
 	return db.listDatasetOnDemandMetadataFileAccessions(ctx, nil)
@@ -244,13 +244,13 @@ func (db *pgDb) ListDatasetOnDemandImageFileAccessions(ctx context.Context, data
 	return db.listDatasetOnDemandImageFileAccessions(ctx, nil, datasetAccession)
 }
 
-func (db *pgDb) SetDatasetOnDemandDatasetReleased(ctx context.Context, datasetAccession string) error {
-	return db.setDatasetOnDemandDatasetReleased(ctx, nil, datasetAccession)
+func (db *pgDb) SetOnDemandDatasetReleased(ctx context.Context, datasetAccession string) error {
+	return db.setOnDemandDatasetReleased(ctx, nil, datasetAccession)
 }
 
-func (db *pgDb) IsDatasetOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error) {
-	return db.isDatasetOnDemandDatasetReleased(ctx, nil, dodDatasetAccession)
+func (db *pgDb) IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error) {
+	return db.isOnDemandDatasetReleased(ctx, nil, dodDatasetAccession)
 }
-func (db *pgDb) GetDatasetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error) {
-	return db.getDatasetOnDemandDatasetRemsMetadata(ctx, nil, datasetAccession)
+func (db *pgDb) GetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error) {
+	return db.getOnDemandDatasetRemsMetadata(ctx, nil, datasetAccession)
 }

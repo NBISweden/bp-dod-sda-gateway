@@ -67,7 +67,6 @@ func (db *metadataSubmitterPg) listDatasetFiles(ctx context.Context, datasetAcce
 		f.MetadataFileType = metadataTypeFromPath(f.Path)
 
 		files = append(files, f)
-
 	}
 
 	if err := rows.Err(); err != nil {

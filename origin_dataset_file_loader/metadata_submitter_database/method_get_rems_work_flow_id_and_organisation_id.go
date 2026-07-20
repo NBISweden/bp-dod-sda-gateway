@@ -39,7 +39,7 @@ func (db *metadataSubmitterPg) getRemsWorkFlowIDAndOrganisationID(ctx context.Co
 
 	var remsEntry metadata_models.Rems
 	if err := xml.Unmarshal(remsEntryXmlContent, &remsEntry); err != nil {
-		return -1, "", fmt.Errorf("failed to unmarshal dataset: %w", err)
+		return -1, "", fmt.Errorf("failed to unmarshal rems: %w", err)
 	}
 	workflowID, err := strconv.Atoi(remsEntry.WorkflowId)
 	if err != nil {

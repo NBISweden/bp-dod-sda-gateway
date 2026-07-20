@@ -84,12 +84,14 @@ func (t *MetadataFileType) Scan(src any) error {
 		s = string(v)
 	case nil:
 		*t = MetadataFileTypeInvalid
+
 		return nil
 	default:
 		return fmt.Errorf("cannot scan %T into MetadataFileType", src)
 	}
 
 	*t = ParseMetadataFileType(s)
+
 	return nil
 }
 

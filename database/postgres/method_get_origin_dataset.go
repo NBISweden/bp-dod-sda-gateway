@@ -8,9 +8,6 @@ import (
 	"fmt"
 
 	"github.com/NBISweden/bp-dod-sda-gateway/models"
-	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 const getOriginDatasetQuery = "getOriginDataset"
@@ -23,9 +20,6 @@ WHERE accession = $1
 `
 }
 func (db *pgDb) getOriginDataset(ctx context.Context, tx *sql.Tx, accession string) (*models.OriginDataset, error) {
-	ctx, span := observability.Tracer().Start(ctx, "getOriginDataset", trace.WithAttributes(attribute.String("accession", accession)))
-	defer span.End()
-
 	stmt, err := db.getPreparedStmt(tx, getOriginDatasetQuery)
 	if err != nil {
 		return nil, err
@@ -58,7 +52,7 @@ func (db *pgDb) getOriginDataset(ctx context.Context, tx *sql.Tx, accession stri
 	}
 
 	if err := xml.Unmarshal(datasetXml, &originDataset.Dataset); err != nil {
-		return nil, fmt.Errorf("failed to marshal dataset: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal dataset: %w", err)
 	}
 
 	if err := xml.Unmarshal(imageXml, &originDataset.Image); err != nil {
@@ -66,27 +60,27 @@ func (db *pgDb) getOriginDataset(ctx context.Context, tx *sql.Tx, accession stri
 	}
 	if annotationXml.Valid {
 		if err := xml.Unmarshal(annotationXml.V, &originDataset.Annotation); err != nil {
-			return nil, fmt.Errorf("failed to marshal annotation: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal annotation: %w", err)
 		}
 	}
 
 	if err := xml.Unmarshal(observationXml, &originDataset.Observation); err != nil {
-		return nil, fmt.Errorf("failed to marshal observation: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal observation: %w", err)
 	}
 	if observerXml.Valid {
 		if err := xml.Unmarshal(observerXml.V, &originDataset.Observer); err != nil {
-			return nil, fmt.Errorf("failed to marshal observer: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal observer: %w", err)
 		}
 	}
 
 	if err := xml.Unmarshal(policyXml, &originDataset.Policy); err != nil {
-		return nil, fmt.Errorf("failed to marshal policy: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal policy: %w", err)
 	}
 	if err := xml.Unmarshal(sampleXml, &originDataset.Sample); err != nil {
-		return nil, fmt.Errorf("failed to marshal sample: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal sample: %w", err)
 	}
 	if err := xml.Unmarshal(stainingXml, &originDataset.Staining); err != nil {
-		return nil, fmt.Errorf("failed to marshal staining: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal staining: %w", err)
 	}
 
 	return originDataset, nil

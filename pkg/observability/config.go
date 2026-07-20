@@ -15,7 +15,7 @@ func init() {
 		&config.Flag{
 			Name: "observability.enabled",
 			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
-				flagSet.Bool(flagName, true, "If observability(metrics, tracing) is to be enabled")
+				flagSet.Bool(flagName, false, "If observability(metrics, tracing) is to be enabled, if enabled, Prometheus endpoint will be hosted at port 9090, and see [OpenTelemetry Environment Variable Specification](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/) for additional environment variable documentation")
 			},
 			Required: false,
 			AssignFunc: func(flagName string) {

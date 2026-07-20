@@ -17,9 +17,9 @@ import (
 	"github.com/NBISweden/bp-dod-sda-gateway/config"
 	"github.com/NBISweden/bp-dod-sda-gateway/database"
 	"github.com/NBISweden/bp-dod-sda-gateway/database/postgres"
-	"github.com/NBISweden/bp-dod-sda-gateway/dod_metadata_file_handler"
-	"github.com/NBISweden/bp-dod-sda-gateway/dod_service_impl"
+	"github.com/NBISweden/bp-dod-sda-gateway/dataset_on_demand_service_impl"
 	dodservice "github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/v1/v1connect"
+	"github.com/NBISweden/bp-dod-sda-gateway/on_demand_dataset_metadata_file_handler"
 	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader/metadata_submitter_database"
 	configpkg "github.com/NBISweden/bp-dod-sda-gateway/pkg/config"
 	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
@@ -64,7 +64,7 @@ func run() error {
 		return fmt.Errorf("failed to init otel connect interceptor: %w", err)
 	}
 
-	if err := dod_metadata_file_handler.Init(ctx); err != nil {
+	if err := on_demand_dataset_metadata_file_handler.Init(ctx); err != nil {
 		return fmt.Errorf("failed to init dod metadata file handler: %w", err)
 	}
 
@@ -76,8 +76,8 @@ func run() error {
 		_ = msdb.Close()
 	}()
 
-	dodServiceImpl, err := dod_service_impl.NewDodServiceImpl(
-		dod_service_impl.OriginDatasetFileLoader(msdb),
+	dodServiceImpl, err := dataset_on_demand_service_impl.NewDodServiceImpl(
+		dataset_on_demand_service_impl.OriginDatasetFileLoader(msdb),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to init dod service impl: %w", err)
@@ -100,9 +100,10 @@ func run() error {
 	// Use h2c so we can serve HTTP/2 without TLS.
 	p.SetUnencryptedHTTP2(true)
 	srv := http.Server{
-		Addr:      fmt.Sprintf(":%d", config.DodServicePort()),
-		Handler:   mux,
-		Protocols: p,
+		Addr:              fmt.Sprintf(":%d", config.DodServicePort()),
+		Handler:           mux,
+		Protocols:         p,
+		ReadHeaderTimeout: 20 * time.Second,
 	}
 	serverErr := make(chan error, 1)
 

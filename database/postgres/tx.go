@@ -47,28 +47,28 @@ func (tx *pgTx) GetOriginDataset(ctx context.Context, accession string) (*models
 	return tx.getOriginDataset(ctx, tx.tx, accession)
 }
 
-func (tx *pgTx) InsertDatasetOnDemandDataset(ctx context.Context, dodDataset *models.DatasetOnDemandDataset) error {
-	return tx.insertDatasetOnDemandDataset(ctx, tx.tx, dodDataset)
+func (tx *pgTx) InsertOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error {
+	return tx.insertOnDemandDataset(ctx, tx.tx, dodDataset)
 }
 
-func (tx *pgTx) InsertDatasetOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAccession string) error {
-	return tx.insertDatasetOnDemandDatasetImage(ctx, tx.tx, dodAccession, originAccession, imageAccession)
+func (tx *pgTx) InsertOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAccession string) error {
+	return tx.insertOnDemandDatasetImage(ctx, tx.tx, dodAccession, originAccession, imageAccession)
 }
 func (tx *pgTx) ListDatasetOnDemandMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error) {
-	return tx.listDatasetOnDemandMetadataFileAccessions(ctx, nil)
+	return tx.listDatasetOnDemandMetadataFileAccessions(ctx, tx.tx)
 }
 
 func (tx *pgTx) ListDatasetOnDemandImageFileAccessions(ctx context.Context, datasetAccession string) ([]string, error) {
 	return tx.listDatasetOnDemandImageFileAccessions(ctx, tx.tx, datasetAccession)
 }
 
-func (tx *pgTx) SetDatasetOnDemandDatasetReleased(ctx context.Context, datasetAccession string) error {
-	return tx.setDatasetOnDemandDatasetReleased(ctx, tx.tx, datasetAccession)
+func (tx *pgTx) SetOnDemandDatasetReleased(ctx context.Context, datasetAccession string) error {
+	return tx.setOnDemandDatasetReleased(ctx, tx.tx, datasetAccession)
 }
 
-func (tx *pgTx) IsDatasetOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error) {
-	return tx.isDatasetOnDemandDatasetReleased(ctx, tx.tx, dodDatasetAccession)
+func (tx *pgTx) IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error) {
+	return tx.isOnDemandDatasetReleased(ctx, tx.tx, dodDatasetAccession)
 }
-func (tx *pgTx) GetDatasetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error) {
-	return tx.getDatasetOnDemandDatasetRemsMetadata(ctx, tx.tx, datasetAccession)
+func (tx *pgTx) GetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error) {
+	return tx.getOnDemandDatasetRemsMetadata(ctx, tx.tx, datasetAccession)
 }

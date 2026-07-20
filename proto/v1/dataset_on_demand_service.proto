@@ -20,10 +20,10 @@ message RequestDatasetCreationRequest {
   string user = 2;
 }
 message RequestDatasetCreationResponse {
-  string dod_dataset_accession = 1;
+  string on_demand_dataset_accession = 1;
 }
 message GetDoDDatasetStatusRequest {
-  string dod_dataset_accession = 1;
+  string on_demand_dataset_accession = 1;
 }
 message GetDoDDatasetStatusResponse {
   enum Status {

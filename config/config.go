@@ -15,7 +15,7 @@ func init() {
 		&config.Flag{
 			Name: "dod-service-port",
 			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
-				flagSet.Int(flagName, 8080, "Port to host the grpc Dataset On Demand service at")
+				flagSet.Int(flagName, 8080, "Port to host the grpc Dataset On Demand Service at")
 			},
 			AssignFunc: func(flagName string) {
 				dodServicePort = viper.GetInt(flagName)

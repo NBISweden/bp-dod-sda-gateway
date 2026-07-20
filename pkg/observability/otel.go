@@ -13,21 +13,23 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	otelProm "go.opentelemetry.io/otel/exporters/prometheus"
+	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/trace"
-	otelTrace "go.opentelemetry.io/otel/trace"
-	otelTraceNoop "go.opentelemetry.io/otel/trace/noop"
+	oteltrace "go.opentelemetry.io/otel/trace"
+	oteltracenoop "go.opentelemetry.io/otel/trace/noop"
 )
 
 var tracerName string
 
-// TODO log, status, events to span
-func Tracer() otelTrace.Tracer {
+var promSrv *http.Server
+
+func Tracer() oteltrace.Tracer {
 	if tracerName == "" || !enabled {
-		return otelTraceNoop.NewTracerProvider().Tracer("noop")
+		return oteltracenoop.NewTracerProvider().Tracer("noop")
 	}
+
 	return otel.GetTracerProvider().Tracer(tracerName)
 }
 
@@ -46,6 +48,7 @@ func SetupOTelSDK(ctx context.Context, serviceName string) (shutdown func(contex
 			err = errors.Join(err, fn(ctx))
 		}
 		shutdownFuncs = nil
+
 		return err
 	}
 	if !enabled {
@@ -65,47 +68,59 @@ func SetupOTelSDK(ctx context.Context, serviceName string) (shutdown func(contex
 
 	traceExporter, err := otlptrace.New(ctx, otlptracehttp.NewClient())
 	if err != nil {
-		return nil, err
+		handleErr(err)
+
+		return
 	}
 
 	tracerProvider := trace.NewTracerProvider(trace.WithBatcher(traceExporter))
 	if err != nil {
 		handleErr(err)
+
 		return
 	}
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
 
 	reg := prometheus.NewRegistry()
-	metricsExposer, err := otelProm.New(
-		otelProm.WithRegisterer(reg), // register exporter with this registry
+	metricsExposer, err := otelprom.New(
+		otelprom.WithRegisterer(reg), // register exporter with this registry
 	)
 	if err != nil {
-		log.Fatalf("prometheus exporter: %v", err)
+		handleErr(err)
+
+		return
 	}
 
 	meterProvider := metric.NewMeterProvider(metric.WithReader(metricsExposer.Reader))
-	if err != nil {
-		handleErr(err)
-		return
-	}
 	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
 	otel.SetMeterProvider(meterProvider)
 
-	err = runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
-	if err != nil {
-		return nil, err
+	if err = runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second)); err != nil {
+		handleErr(err)
+
+		return
 	}
 
 	prometheusMux := http.NewServeMux()
 
 	prometheusMux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 
+	promSrv = &http.Server{
+		Addr:              ":9090",
+		Handler:           prometheusMux,
+		ReadHeaderTimeout: 20 * time.Second,
+	}
 	go func() {
-		if err := http.ListenAndServe(":9090", prometheusMux); err != nil {
+		if err := promSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("failed to start prometheus metrics server")
 		}
 	}()
+	shutdownFuncs = append(shutdownFuncs, func(ctx context.Context) error {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		return promSrv.Shutdown(ctx)
+	})
 
 	return
 }
