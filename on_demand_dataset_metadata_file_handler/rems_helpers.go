@@ -24,6 +24,10 @@ type catalogueItemsCreateReq struct {
 	WorkflowID    int           `json:"wfid"`
 	Organization  organization  `json:"organization"`
 	Localizations localizations `json:"localizations"`
+	Categories    []categories  `json:"categories,omitempty"`
+}
+type categories struct {
+	CategoryId int `json:"category/id"`
 }
 type localizations struct {
 	En localizationTitle `json:"en"`
@@ -105,8 +109,8 @@ func (dmfh *dodMetadataFileHandler) createRemsResource(ctx context.Context, rems
 		createReq.Organization.OrganizationID = rems.OrganisationId
 	}
 	// Override values from rems.xml with hardcoded values when connected to a Demo rems instance
-	if remsDemoOrganisationID != "" {
-		createReq.Organization.OrganizationID = remsDemoOrganisationID
+	if remsDemoOrganisationId != "" {
+		createReq.Organization.OrganizationID = remsDemoOrganisationId
 	}
 
 	reqBody, err := json.Marshal(createReq)
@@ -197,11 +201,19 @@ func (dmfh *dodMetadataFileHandler) createRemsCatalogueItem(ctx context.Context,
 	}
 
 	// Override values from rems.xml with hardcoded values when connected to a Demo rems instance
-	if remsDemoOrganisationID != "" {
-		ciCreateReq.Organization.OrganizationID = remsDemoOrganisationID
+	if remsDemoOrganisationId != "" {
+		ciCreateReq.Organization.OrganizationID = remsDemoOrganisationId
 	}
-	if remsDemoWorkflowID != -1 {
-		ciCreateReq.WorkflowID = remsDemoWorkflowID
+	if remsDemoWorkflowId != -1 {
+		ciCreateReq.WorkflowID = remsDemoWorkflowId
+	}
+
+	if remsCategoryId != 0 {
+		ciCreateReq.Categories = []categories{
+			{
+				CategoryId: remsCategoryId,
+			},
+		}
 	}
 
 	catalogueItemsRequestBody, err := json.Marshal(ciCreateReq)

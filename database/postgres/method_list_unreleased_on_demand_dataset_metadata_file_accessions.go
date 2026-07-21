@@ -10,7 +10,7 @@ import (
 const listUnreleasedDatasetOnDemandMetadataFileAccessionsQuery = "listUnreleasedDatasetOnDemandMetadataFileAccessions"
 
 func init() {
-	queries[listUnreleasedDatasetOnDemandMetadataFileAccessionsQuery] = `SELECT oddmf.dataset_accession, oddmf.type, oddmf.accession
+	queries[listUnreleasedDatasetOnDemandMetadataFileAccessionsQuery] = `SELECT oddmf.on_demand_dataset_accession, oddmf.type, oddmf.accession
 FROM on_demand_dataset_metadata_file AS oddmf
 INNER JOIN on_demand_dataset AS odd ON odd.accession = oddmf.on_demand_dataset_accession
 WHERE odd.released_at IS NULL;`

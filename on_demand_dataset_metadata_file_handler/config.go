@@ -13,8 +13,9 @@ var (
 	remsUrl                string
 	remsUser               string
 	remsKey                string
-	remsDemoWorkflowID     int
-	remsDemoOrganisationID string
+	remsDemoWorkflowId     int
+	remsDemoOrganisationId string
+	remsCategoryId         int
 
 	sdaAPIPollInterval time.Duration
 
@@ -64,7 +65,7 @@ func init() {
 			},
 			Required: false,
 			AssignFunc: func(flagName string) {
-				remsDemoWorkflowID = viper.GetInt(flagName)
+				remsDemoWorkflowId = viper.GetInt(flagName)
 			},
 		},
 		&config.Flag{
@@ -74,7 +75,16 @@ func init() {
 			},
 			Required: false,
 			AssignFunc: func(flagName string) {
-				remsDemoOrganisationID = viper.GetString(flagName)
+				remsDemoOrganisationId = viper.GetString(flagName)
+			},
+		}, &config.Flag{
+			Name: "rems.rems_category_id",
+			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
+				flagSet.Int(flagName, 0, "The rems category id On Demand Datasets will be created under, if not configured or configured as 0, On Demand Datasets will not be created under any category")
+			},
+			Required: false,
+			AssignFunc: func(flagName string) {
+				remsCategoryId = viper.GetInt(flagName)
 			},
 		}, &config.Flag{
 			Name: "sda_api.url",

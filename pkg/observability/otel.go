@@ -3,12 +3,12 @@ package observability
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -113,7 +113,7 @@ func SetupOTelSDK(ctx context.Context, serviceName string) (shutdown func(contex
 	}
 	go func() {
 		if err := promSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error("failed to start prometheus metrics server")
+			slog.Error("failed to start prometheus metrics server", "error", err)
 		}
 	}()
 	shutdownFuncs = append(shutdownFuncs, func(ctx context.Context) error {
