@@ -119,6 +119,7 @@ func SetupOTelSDK(ctx context.Context, serviceName string) (shutdown func(contex
 	shutdownFuncs = append(shutdownFuncs, func(ctx context.Context) error {
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
+
 		return promSrv.Shutdown(ctx)
 	})
 

@@ -1,14 +1,10 @@
 package on_demand_dataset_metadata_file_handler
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -103,7 +99,7 @@ func Init(ctx context.Context) error {
 	// Create an datasetCreationRequestHandler with the session and default options
 	dmfh.transferManagerClient = transfermanager.New(s3Client)
 
-	datasetsMetadataFiles, err := database.ListDatasetOnDemandMetadataFiles(ctx)
+	datasetsMetadataFiles, err := database.ListUnreleasedOnDemandDatasetMetadataFiles(ctx)
 	if err != nil {
 		return err
 	}
@@ -113,145 +109,6 @@ func Init(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (dmfh *dodMetadataFileHandler) monitorDatasetMetadataFiles(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) {
-	for {
-		if dmfh.ctx.Err() != nil {
-			slog.Info("on demand dataset metadata file handler - stopped, context canceled")
-
-			break
-		}
-
-		done, err := dmfh.pollAndProcess(datasetAccession, datasetMetadataFiles)
-		if err != nil {
-			slog.Warn("failed to process dataset metadata files", "error", err, "retry-in", sdaAPIPollInterval.String())
-		}
-		if done {
-			slog.Info("on demand dataset metadata file handler - process dataset metadata files finished", "accession", datasetAccession)
-
-			break
-		}
-
-		select {
-		case <-time.After(sdaAPIPollInterval):
-		case <-dmfh.ctx.Done():
-			slog.Info("on demand dataset metadata file handler - stopped, context canceled")
-			return
-		}
-	}
-}
-
-func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) (bool, error) {
-	ctx, span := observability.Tracer().Start(dmfh.ctx, "monitorDatasetMetadataFiles", trace.WithAttributes(attribute.String("accession", datasetAccession)))
-	defer span.End()
-
-	// verified -> do accession
-	// all ready -> mappings
-
-	metadataFiles, err := dmfh.listMetadataFiles(ctx, datasetAccession)
-	if err != nil {
-		return false, fmt.Errorf("failed to list metadata files: %w", err)
-	}
-
-	allReady := true
-	for _, metadataFile := range metadataFiles {
-		switch metadataFile.Status {
-		// Based on https://github.com/neicnordic/sensitive-data-archive/blob/main/postgresql/initdb.d/01_main.sql#L69
-		case "uploaded":
-			slog.Debug("metadata file still in uploaded status", "sda-id", metadataFile.FileId)
-			allReady = false
-		case "registered", "backed up", "downloaded", "error", "disabled", "enabled":
-			slog.Warn("unexpected metadata file status", "status", metadataFile.Status, "sda-id", metadataFile.FileId)
-			allReady = false
-		case "submitted", "ingested", "archived":
-			// Keep waiting until "verified"
-			allReady = false
-		case "verified":
-			var fileAccession string
-			switch {
-			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeDataset.String()):
-				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeDataset]
-			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeImage.String()):
-				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeImage]
-			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeObservation.String()):
-				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeObservation]
-			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeObserver.String()):
-				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeObserver]
-			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypePolicy.String()):
-				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypePolicy]
-			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeSample.String()):
-				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeSample]
-			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeStaining.String()):
-				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeStaining]
-			default:
-			}
-
-			if fileAccession == "" {
-				slog.Warn("missing accession for metadata file", "inbox-path", metadataFile.InboxPath, "sda-id", metadataFile.FileId)
-				allReady = false
-
-				continue
-			}
-
-			if err := dmfh.triggerFileAccession(ctx, metadataFile.FileId, fileAccession); err != nil {
-				return false, fmt.Errorf("failed to trigger file accession: %w", err)
-			}
-			allReady = false
-		case "ready":
-
-		default:
-			slog.Warn("unknown metadata file status", "status", metadataFile.Status)
-			allReady = false
-		}
-	}
-
-	if !allReady || len(metadataFiles) == 0 {
-		return false, nil
-	}
-
-	remsMetadata, err := database.GetOnDemandDatasetRemsMetadata(ctx, datasetAccession)
-	if err != nil {
-		return false, err
-	}
-
-	remsResourceID, err := dmfh.createRemsResource(ctx, remsMetadata, datasetAccession)
-	if err != nil {
-		return false, fmt.Errorf("failed to create rems resource for on demand dataset: %w", err)
-	}
-	if err := dmfh.createRemsCatalogueItem(ctx, remsMetadata, datasetAccession, remsResourceID); err != nil {
-		return false, fmt.Errorf("failed to create rems catalog item for on demand dataset: %w", err)
-	}
-
-	datasetFileAccessions, err := database.ListDatasetOnDemandImageFileAccessions(ctx, datasetAccession)
-	if err != nil {
-		return false, fmt.Errorf("failed to list on demand dataset image accessions: %w", err)
-	}
-
-	for metadataType, datasetFileAccession := range datasetMetadataFiles {
-		// Exclude rems
-		if metadataType == metadata_models.MetadataFileTypeRems {
-			continue
-		}
-		datasetFileAccessions = append(datasetFileAccessions, datasetFileAccession)
-	}
-
-	if err := dmfh.triggerDatasetCreation(ctx, datasetAccession, datasetFileAccessions); err != nil {
-		return false, fmt.Errorf("failed to trigger dataset creation: %w", err)
-	}
-
-	// Small sleep to allow the dataset creation to be processed, as otherwise sda-api will respond with not found while mapper is processing creation request
-	time.Sleep(5 * time.Second)
-
-	if err := dmfh.triggerDatasetRelease(ctx, datasetAccession); err != nil {
-		return false, fmt.Errorf("failed to trigger on demand dataset release: %w", err)
-	}
-
-	if err := database.SetOnDemandDatasetReleased(ctx, datasetAccession); err != nil {
-		return false, fmt.Errorf("failed to set on demand dataset as released: %w", err)
-	}
-
-	return true, nil
 }
 
 func RegisterOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error {
@@ -352,219 +209,134 @@ func RegisterOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDat
 	return nil
 }
 
-func (dmfh *dodMetadataFileHandler) triggerFileIngest(ctx context.Context, datasetAccession string, metadataFileType metadata_models.MetadataFileType) error {
-	ctx, span := observability.Tracer().Start(ctx, "triggerFileIngest", trace.WithAttributes(attribute.String("sda-api-url", sdaAPIUrl), attribute.String("metadata-file-type", metadataFileType.String())))
-	defer span.End()
+func (dmfh *dodMetadataFileHandler) monitorDatasetMetadataFiles(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) {
+	for {
+		if dmfh.ctx.Err() != nil {
+			slog.Info("on demand dataset metadata file handler - stopped, context canceled")
 
-	endpoint, err := url.JoinPath(sdaAPIUrl, "file", "ingest")
-	if err != nil {
-		return fmt.Errorf("invalid base URL: %w", err)
-	}
-
-	ingestReq := struct {
-		FilePath string `json:"filepath"`
-		User     string `json:"user"`
-	}{
-		FilePath: fmt.Sprintf("%s/METADATA/%s.xml.c4gh", datasetAccession, metadataFileType.String()),
-		User:     dmfh.uploadUser,
-	}
-
-	reqBody, err := json.Marshal(ingestReq)
-	if err != nil {
-		return fmt.Errorf("failed to marshal ingest body: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+inboxToken)
-
-	resp, err := dmfh.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("http request: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-
-		return fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
-}
-
-func (dmfh *dodMetadataFileHandler) triggerFileAccession(ctx context.Context, fileID, fileAccession string) error {
-	ctx, span := observability.Tracer().Start(ctx, "triggerFileAccession", trace.WithAttributes(attribute.String("sda-api-url", sdaAPIUrl)))
-	defer span.End()
-
-	endpoint, err := url.JoinPath(sdaAPIUrl, "file", "accession")
-	if err != nil {
-		return fmt.Errorf("invalid base URL: %w", err)
-	}
-	query := url.Values{}
-	query.Set("fileid", fileID)
-	query.Set("accessionid", fileAccession)
-
-	if enc := query.Encode(); enc != "" {
-		endpoint += "?" + enc
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, nil)
-	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+inboxToken)
-
-	resp, err := dmfh.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("http request: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-
-		return fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
-}
-
-func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, datasetAccession string, fileAccessions []string) error {
-	ctx, span := observability.Tracer().Start(ctx, "triggerDatasetCreation", trace.WithAttributes(attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession)))
-	defer span.End()
-
-	endpoint, err := url.JoinPath(sdaAPIUrl, "dataset", "create")
-	if err != nil {
-		return fmt.Errorf("invalid base URL: %w", err)
-	}
-
-	datasetCreateReq := struct {
-		DatasetAccession string   `json:"dataset_id"`
-		FileAccessionIDs []string `json:"accession_ids"`
-		User             string   `json:"user"`
-	}{
-		DatasetAccession: datasetAccession,
-		FileAccessionIDs: fileAccessions,
-		User:             dmfh.uploadUser,
-	}
-
-	reqBody, err := json.Marshal(datasetCreateReq)
-	if err != nil {
-		return fmt.Errorf("failed to marshal dataset request body: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+inboxToken)
-
-	resp, err := dmfh.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("http request: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-
-		return fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
-}
-
-func (dmfh *dodMetadataFileHandler) triggerDatasetRelease(ctx context.Context, datasetAccession string) error {
-	ctx, span := observability.Tracer().Start(ctx, "triggerDatasetRelease", trace.WithAttributes(attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession)))
-	defer span.End()
-
-	endpoint, err := url.JoinPath(sdaAPIUrl, "dataset", "release", datasetAccession)
-	if err != nil {
-		return fmt.Errorf("invalid base URL: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, nil)
-	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+inboxToken)
-
-	resp, err := dmfh.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("http request: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-
-		return fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
-}
-
-func (dmfh *dodMetadataFileHandler) listMetadataFiles(ctx context.Context, datasetAccession string) ([]*fileInfo, error) {
-	ctx, span := observability.Tracer().Start(ctx, "listMetadataFiles", trace.WithAttributes(attribute.String("sda-api-url", sdaAPIUrl)))
-	defer span.End()
-
-	endpoint, err := url.JoinPath(sdaAPIUrl, "files")
-	if err != nil {
-		return nil, fmt.Errorf("invalid base URL: %w", err)
-	}
-
-	return paginate(ctx, func(ctx context.Context, nextCursor string) ([]*fileInfo, string, error) {
-		listUrl := endpoint
-		query := url.Values{}
-		query.Set("path_prefix", datasetAccession)
-		if nextCursor != "" {
-			query.Set("cursor", nextCursor)
-		}
-		if enc := query.Encode(); enc != "" {
-			listUrl += "?" + enc
+			break
 		}
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, listUrl, nil)
+		done, err := dmfh.pollAndProcess(datasetAccession, datasetMetadataFiles)
 		if err != nil {
-			return nil, "", fmt.Errorf("build request: %w", err)
+			slog.Warn("failed to process dataset metadata files", "error", err, "retry-in", sdaAPIPollInterval.String())
 		}
-		req.Header.Set("Accept", "application/json")
-		req.Header.Set("Authorization", "Bearer "+inboxToken)
+		if done {
+			slog.Info("on demand dataset metadata file handler - process dataset metadata files finished", "accession", datasetAccession)
 
-		resp, err := dmfh.httpClient.Do(req)
-		if err != nil {
-			return nil, "", fmt.Errorf("http request: %w", err)
-		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			body, _ := io.ReadAll(resp.Body)
-
-			return nil, "", fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
+			break
 		}
 
-		var fileList []*fileInfo
-		if err := json.NewDecoder(resp.Body).Decode(&fileList); err != nil {
-			return nil, "", fmt.Errorf("failed to decode /files response: %w", err)
-		}
+		select {
+		case <-time.After(sdaAPIPollInterval):
+		case <-dmfh.ctx.Done():
+			slog.Info("on demand dataset metadata file handler - stopped, context done")
 
-		return fileList, resp.Header.Get("X-Next-Cursor"), nil
-	})
+			return
+		}
+	}
+}
+
+func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) (bool, error) {
+	ctx, span := observability.Tracer().Start(dmfh.ctx, "pollAndProcess", trace.WithAttributes(attribute.String("accession", datasetAccession)))
+	defer span.End()
+
+	// verified -> do accession
+	// all ready -> mappings
+
+	metadataFiles, err := dmfh.listMetadataFiles(ctx, datasetAccession)
+	if err != nil {
+		return false, fmt.Errorf("failed to list metadata files: %w", err)
+	}
+
+	allReady := true
+	for _, metadataFile := range metadataFiles {
+		switch metadataFile.Status {
+		// Based on https://github.com/neicnordic/sensitive-data-archive/blob/main/postgresql/initdb.d/01_main.sql#L69
+		case "uploaded":
+			slog.Debug("metadata file still in uploaded status", "sda-id", metadataFile.FileId)
+			allReady = false
+		case "registered", "backed up", "downloaded", "error", "disabled", "enabled":
+			slog.Warn("unexpected metadata file status", "status", metadataFile.Status, "sda-id", metadataFile.FileId)
+			allReady = false
+		case "submitted", "ingested", "archived":
+			// Keep waiting until "verified"
+			allReady = false
+		case "verified":
+			var fileAccession string
+			switch {
+			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeDataset.String()):
+				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeDataset]
+			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeImage.String()):
+				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeImage]
+			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeObservation.String()):
+				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeObservation]
+			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeObserver.String()):
+				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeObserver]
+			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypePolicy.String()):
+				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypePolicy]
+			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeSample.String()):
+				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeSample]
+			case strings.Contains(metadataFile.InboxPath, metadata_models.MetadataFileTypeStaining.String()):
+				fileAccession = datasetMetadataFiles[metadata_models.MetadataFileTypeStaining]
+			default:
+			}
+
+			if fileAccession == "" {
+				slog.Warn("missing accession for metadata file", "inbox-path", metadataFile.InboxPath, "sda-id", metadataFile.FileId)
+				allReady = false
+
+				continue
+			}
+
+			if err := dmfh.triggerFileAccession(ctx, metadataFile.FileId, fileAccession); err != nil {
+				return false, fmt.Errorf("failed to trigger file accession: %w", err)
+			}
+			allReady = false
+		case "ready":
+
+		default:
+			slog.Warn("unknown metadata file status", "status", metadataFile.Status)
+			allReady = false
+		}
+	}
+
+	if !allReady || len(metadataFiles) == 0 {
+		return false, nil
+	}
+
+	remsMetadata, err := database.GetOnDemandDatasetRemsMetadata(ctx, datasetAccession)
+	if err != nil {
+		return false, err
+	}
+
+	remsResourceID, err := dmfh.createRemsResource(ctx, remsMetadata, datasetAccession)
+	if err != nil {
+		return false, fmt.Errorf("failed to create rems resource for on demand dataset: %w", err)
+	}
+	if err := dmfh.createRemsCatalogueItem(ctx, remsMetadata, datasetAccession, remsResourceID); err != nil {
+		return false, fmt.Errorf("failed to create rems catalog item for on demand dataset: %w", err)
+	}
+
+	imageBaseFileNames, err := database.ListOnDemandDatasetImageFileAccessions(ctx, datasetAccession)
+	if err != nil {
+		return false, fmt.Errorf("failed to list on demand dataset image accessions: %w", err)
+	}
+
+	if err := dmfh.triggerDatasetCreation(ctx, datasetAccession, datasetMetadataFiles, imageBaseFileNames); err != nil {
+		return false, fmt.Errorf("failed to trigger dataset creation: %w", err)
+	}
+
+	// Small sleep to allow the dataset creation to be processed, as otherwise sda-api will respond with not found while mapper is processing creation request on the dataset release request
+	time.Sleep(5 * time.Second)
+
+	if err := dmfh.triggerDatasetRelease(ctx, datasetAccession); err != nil {
+		return false, fmt.Errorf("failed to trigger on demand dataset release: %w", err)
+	}
+
+	if err := database.SetOnDemandDatasetReleased(ctx, datasetAccession); err != nil {
+		return false, fmt.Errorf("failed to set on demand dataset as released: %w", err)
+	}
+
+	return true, nil
 }

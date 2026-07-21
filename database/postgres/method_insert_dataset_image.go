@@ -9,9 +9,7 @@ const insertDatasetImageQuery = "insertDatasetImage"
 
 func init() {
 	queries[insertDatasetImageQuery] = `INSERT INTO dataset_image (dataset_accession, accession)
-VALUES($1, $2)
-
-`
+VALUES($1, $2);`
 }
 func (db *pgDb) insertDatasetImage(ctx context.Context, tx *sql.Tx, datasetAccession, imageAccession string) error {
 	stmt, err := db.getPreparedStmt(tx, insertDatasetImageQuery)

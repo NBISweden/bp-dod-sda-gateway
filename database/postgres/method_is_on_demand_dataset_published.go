@@ -11,8 +11,7 @@ func init() {
 	queries[isOnDemandDatasetReleasedQuery] = `SELECT true
 FROM on_demand_dataset  
 WHERE accession = $1
-AND released_at IS NOT NULL
-`
+AND released_at IS NOT NULL;`
 }
 func (db *pgDb) isOnDemandDatasetReleased(ctx context.Context, tx *sql.Tx, accession string) (bool, error) {
 	stmt, err := db.getPreparedStmt(tx, isOnDemandDatasetReleasedQuery)

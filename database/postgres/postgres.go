@@ -217,8 +217,8 @@ func (db *pgDb) InsertDatasetImage(ctx context.Context, datasetAccession, imageA
 	return db.insertDatasetImage(ctx, nil, datasetAccession, imageAccession)
 }
 
-func (db *pgDb) InsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession string) error {
-	return db.insertImageFile(ctx, nil, datasetAccession, imageAccession, fileAccession)
+func (db *pgDb) InsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error {
+	return db.insertImageFile(ctx, nil, datasetAccession, imageAccession, fileAccession, baseFileName)
 }
 
 func (db *pgDb) GetOriginDatasetAccessionFromImageAccession(ctx context.Context, imageAccession string) (string, error) {
@@ -229,28 +229,28 @@ func (db *pgDb) GetOriginDataset(ctx context.Context, accession string) (*models
 	return db.getOriginDataset(ctx, nil, accession)
 }
 
-func (db *pgDb) InsertOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error {
-	return db.insertOnDemandDataset(ctx, nil, dodDataset)
+func (db *pgDb) InsertOnDemandDataset(ctx context.Context, onDemandDataset *models.OnDemandDataset) error {
+	return db.insertOnDemandDataset(ctx, nil, onDemandDataset)
 }
 
-func (db *pgDb) InsertOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAccession string) error {
-	return db.insertOnDemandDatasetImage(ctx, nil, dodAccession, originAccession, imageAccession)
+func (db *pgDb) InsertOnDemandDatasetImage(ctx context.Context, onDemandDatasetAccession, imageAccession string) error {
+	return db.insertOnDemandDatasetImage(ctx, nil, onDemandDatasetAccession, imageAccession)
 }
-func (db *pgDb) ListDatasetOnDemandMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error) {
-	return db.listDatasetOnDemandMetadataFileAccessions(ctx, nil)
-}
-
-func (db *pgDb) ListDatasetOnDemandImageFileAccessions(ctx context.Context, datasetAccession string) ([]string, error) {
-	return db.listDatasetOnDemandImageFileAccessions(ctx, nil, datasetAccession)
+func (db *pgDb) ListUnreleasedOnDemandDatasetMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error) {
+	return db.listUnreleasedOnDemandDatasetMetadataFileAccessions(ctx, nil)
 }
 
-func (db *pgDb) SetOnDemandDatasetReleased(ctx context.Context, datasetAccession string) error {
-	return db.setOnDemandDatasetReleased(ctx, nil, datasetAccession)
+func (db *pgDb) ListOnDemandDatasetImageFiles(ctx context.Context, onDemandDatasetAccession string) (map[string]string, error) {
+	return db.listOnDemandDatasetImageFiles(ctx, nil, onDemandDatasetAccession)
 }
 
-func (db *pgDb) IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error) {
-	return db.isOnDemandDatasetReleased(ctx, nil, dodDatasetAccession)
+func (db *pgDb) SetOnDemandDatasetReleased(ctx context.Context, onDemandDatasetAccession string) error {
+	return db.setOnDemandDatasetReleased(ctx, nil, onDemandDatasetAccession)
 }
-func (db *pgDb) GetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error) {
-	return db.getOnDemandDatasetRemsMetadata(ctx, nil, datasetAccession)
+
+func (db *pgDb) IsOnDemandDatasetReleased(ctx context.Context, onDemandDatasetAccession string) (bool, error) {
+	return db.isOnDemandDatasetReleased(ctx, nil, onDemandDatasetAccession)
+}
+func (db *pgDb) GetOnDemandDatasetRemsMetadata(ctx context.Context, onDemandDatasetAccession string) (*metadata_models.RemsSet, error) {
+	return db.getOnDemandDatasetRemsMetadata(ctx, nil, onDemandDatasetAccession)
 }

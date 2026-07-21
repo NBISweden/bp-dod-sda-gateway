@@ -3,7 +3,7 @@ package dataset_on_demand_service_impl
 import (
 	"context"
 	"fmt"
-	"strings"
+	"path/filepath"
 
 	"github.com/NBISweden/bp-dod-sda-gateway/models"
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
@@ -140,7 +140,7 @@ func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models
 				slideAccession = originImage.ImageOf.Accession
 
 				for i, imageFile := range originImage.Files.Files {
-					originImage.Files.Files[i].Filename = strings.ReplaceAll(imageFile.Filename, originImage.Alias, originImage.Accession)
+					originImage.Files.Files[i].Filename = fmt.Sprintf("IMAGES/IMAGE_%s/%s", originImage.Accession, filepath.Base(imageFile.Filename))
 				}
 				originImage.Alias = originImage.Accession
 				originImage.ImageOf.Alias = originImage.ImageOf.Accession

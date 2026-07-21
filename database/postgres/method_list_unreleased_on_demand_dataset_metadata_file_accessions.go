@@ -7,17 +7,16 @@ import (
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 )
 
-const listDatasetOnDemandMetadataFileAccessionsQuery = "listDatasetOnDemandMetadataFileAccessions"
+const listUnreleasedDatasetOnDemandMetadataFileAccessionsQuery = "listUnreleasedDatasetOnDemandMetadataFileAccessions"
 
 func init() {
-	queries[listDatasetOnDemandMetadataFileAccessionsQuery] = `SELECT oddmf.dataset_accession, oddmf.type, oddmf.accession
+	queries[listUnreleasedDatasetOnDemandMetadataFileAccessionsQuery] = `SELECT oddmf.dataset_accession, oddmf.type, oddmf.accession
 FROM on_demand_dataset_metadata_file AS oddmf
-INNER JOIN on_demand_dataset AS odd ON odd.accession = oddmf.dataset_accession
-WHERE odd.released_at IS NULL
-`
+INNER JOIN on_demand_dataset AS odd ON odd.accession = oddmf.on_demand_dataset_accession
+WHERE odd.released_at IS NULL;`
 }
-func (db *pgDb) listDatasetOnDemandMetadataFileAccessions(ctx context.Context, tx *sql.Tx) (map[string]map[metadata_models.MetadataFileType]string, error) {
-	stmt, err := db.getPreparedStmt(tx, listDatasetOnDemandMetadataFileAccessionsQuery)
+func (db *pgDb) listUnreleasedOnDemandDatasetMetadataFileAccessions(ctx context.Context, tx *sql.Tx) (map[string]map[metadata_models.MetadataFileType]string, error) {
+	stmt, err := db.getPreparedStmt(tx, listUnreleasedDatasetOnDemandMetadataFileAccessionsQuery)
 	if err != nil {
 		return nil, err
 	}

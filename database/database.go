@@ -32,15 +32,15 @@ type functions interface {
 	GetOriginDatasetAccessionFromImageAccession(ctx context.Context, imageAccession string) (string, error)
 	InsertOriginDataset(ctx context.Context, originDataset *models.OriginDataset) error
 
-	InsertOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error
-	InsertOnDemandDatasetImage(ctx context.Context, dodAccession, originAccession, imageAccession string) error
+	InsertOnDemandDataset(ctx context.Context, onDemandDataset *models.OnDemandDataset) error
+	InsertOnDemandDatasetImage(ctx context.Context, onDemandDatasetAccession, imageAccession string) error
 
 	InsertDatasetImage(ctx context.Context, datasetAccession, imageAccession string) error
-	InsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession string) error
+	InsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error
 
-	ListDatasetOnDemandMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error)
+	ListUnreleasedOnDemandDatasetMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error)
 
-	ListDatasetOnDemandImageFileAccessions(ctx context.Context, datasetAccession string) ([]string, error)
+	ListOnDemandDatasetImageFiles(ctx context.Context, datasetAccession string) (map[string]string, error)
 
 	GetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error)
 	IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error)
@@ -64,12 +64,12 @@ func BeginTransaction(ctx context.Context) (Transaction, error) {
 	return db.BeginTransaction(ctx)
 }
 
-func ListDatasetOnDemandMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error) {
-	return db.ListDatasetOnDemandMetadataFiles(ctx)
+func ListUnreleasedOnDemandDatasetMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error) {
+	return db.ListUnreleasedOnDemandDatasetMetadataFiles(ctx)
 }
 
-func ListDatasetOnDemandImageFileAccessions(ctx context.Context, datasetAccession string) ([]string, error) {
-	return db.ListDatasetOnDemandImageFileAccessions(ctx, datasetAccession)
+func ListOnDemandDatasetImageFileAccessions(ctx context.Context, datasetAccession string) (map[string]string, error) {
+	return db.ListOnDemandDatasetImageFiles(ctx, datasetAccession)
 }
 
 func SetOnDemandDatasetReleased(ctx context.Context, datasetAccession string) error {

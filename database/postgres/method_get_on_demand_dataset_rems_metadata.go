@@ -15,10 +15,8 @@ const getOnDemandDatasetRemsMetadataQuery = "getOnDemandDatasetRemsMetadata"
 func init() {
 	queries[getOnDemandDatasetRemsMetadataQuery] = `SELECT md_rems.xml_content
 FROM on_demand_dataset AS odd
-INNER JOIN on_demand_dataset_metadata_file AS md_rems ON md_rems.type = 'rems' AND odd.accession = md_rems.dataset_accession 
-WHERE odd.accession = $1
-
-`
+INNER JOIN on_demand_dataset_metadata_file AS md_rems ON md_rems.type = 'rems' AND odd.accession = md_rems.on_demand_dataset_accession 
+WHERE odd.accession = $1;`
 }
 func (db *pgDb) getOnDemandDatasetRemsMetadata(ctx context.Context, tx *sql.Tx, accession string) (*metadata_models.RemsSet, error) {
 	stmt, err := db.getPreparedStmt(tx, getOnDemandDatasetRemsMetadataQuery)

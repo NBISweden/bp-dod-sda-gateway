@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -193,7 +194,7 @@ func (d *dodServiceImpl) NewOriginDataset(ctx context.Context, c *connect.Reques
 				if strings.HasSuffix(strings.TrimSuffix(downloadPath, ".c4gh"), strings.TrimSuffix(file.Filename, ".c4gh")) {
 					delete(fileAccessions, downloadPath)
 					found = true
-					if err := tx.InsertImageFile(ctx, originDataset.Accession, image.Accession, fileAccession); err != nil {
+					if err := tx.InsertImageFile(ctx, originDataset.Accession, image.Accession, fileAccession, filepath.Base(file.Filename)); err != nil {
 						slog.Warn("failed to insert image file to database", "error", err, "dataset-accession", originDataset.Accession, "image-accession", image.Accession, "file-accession", fileAccession)
 
 						return nil, connect.NewError(connect.CodeInternal, nil)
@@ -324,7 +325,7 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 
 	for originAccession, imageAccessions := range originDatasetImages {
 		for _, imageAccession := range imageAccessions {
-			if err := tx.InsertOnDemandDatasetImage(ctx, onDemandDataset.Accession, originAccession, imageAccession); err != nil {
+			if err := tx.InsertOnDemandDatasetImage(ctx, onDemandDataset.Accession, imageAccession); err != nil {
 				slog.Warn("failed to insert on demand dataset image", "error", err, "origin-accession", originAccession, "image-accession", imageAccession)
 
 				return nil, connect.NewError(connect.CodeInternal, nil)

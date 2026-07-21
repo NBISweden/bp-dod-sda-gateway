@@ -15,16 +15,15 @@ const insertOnDemandDatasetCreatedFromOriginQuery = "insertOnDemandDatasetCreate
 
 func init() {
 	queries[insertOnDemandDatasetQuery] = `INSERT INTO on_demand_dataset (accession, requested_by_user)
-VALUES($1,$2)
-`
-	queries[insertOnDemandDatasetMetadataFileQuery] = `INSERT INTO on_demand_dataset_metadata_file (dataset_accession, type, accession, xml_content)
-VALUES($1, $2, $3, $4)
-`
-	queries[insertOnDemandDatasetCreatedFromOriginQuery] = `INSERT INTO on_demand_dataset_created_from_origin (dod_accession, origin_accession)
-VALUES($1, $2)
-`
+VALUES($1,$2);`
+
+	queries[insertOnDemandDatasetMetadataFileQuery] = `INSERT INTO on_demand_dataset_metadata_file (on_demand_dataset_accession, type, accession, xml_content)
+VALUES($1, $2, $3, $4);`
+
+	queries[insertOnDemandDatasetCreatedFromOriginQuery] = `INSERT INTO on_demand_dataset_created_from_origin (on_demand_dataset_accession, origin_accession)
+VALUES($1, $2);`
 }
-func (db *pgDb) insertOnDemandDataset(ctx context.Context, tx *sql.Tx, dodDataset *models.OnDemandDataset) error {
+func (db *pgDb) insertOnDemandDataset(ctx context.Context, tx *sql.Tx, onDemandDataset *models.OnDemandDataset) error {
 	insertDatasetStmt, err := db.getPreparedStmt(tx, insertOnDemandDatasetQuery)
 	if err != nil {
 		return err
@@ -39,123 +38,123 @@ func (db *pgDb) insertOnDemandDataset(ctx context.Context, tx *sql.Tx, dodDatase
 	}
 
 	if _, err := insertDatasetStmt.ExecContext(ctx,
-		dodDataset.Accession,
-		dodDataset.RequestedByUser,
+		onDemandDataset.Accession,
+		onDemandDataset.RequestedByUser,
 	); err != nil {
 		return fmt.Errorf("failed to insert dod dataset: %w", err)
 	}
 
-	for _, createdFrom := range dodDataset.OriginDatasetAccessions {
+	for _, createdFrom := range onDemandDataset.OriginDatasetAccessions {
 		if _, err := insertCreatedFromStmt.ExecContext(ctx,
-			dodDataset.Accession,
+			onDemandDataset.Accession,
 			createdFrom,
 		); err != nil {
 			return fmt.Errorf("failed to insert dod dataset created from origin: %w", err)
 		}
 	}
 
-	datasetXml, err := xml.Marshal(dodDataset.DatasetMetadata.MetadataSet)
+	datasetXml, err := xml.Marshal(onDemandDataset.DatasetMetadata.MetadataSet)
 	if err != nil {
 		return fmt.Errorf("failed to marshal dataset: %w", err)
 	}
 
 	if _, err := insertMetadataFileStmt.ExecContext(ctx,
-		dodDataset.Accession,
-		dodDataset.DatasetMetadata.MetadataFileType(),
-		dodDataset.DatasetMetadata.Accession,
+		onDemandDataset.Accession,
+		onDemandDataset.DatasetMetadata.MetadataFileType(),
+		onDemandDataset.DatasetMetadata.Accession,
 		datasetXml,
 	); err != nil {
 		return fmt.Errorf("failed to insert dataset metadata: %w", err)
 	}
 
-	imageXml, err := xml.Marshal(dodDataset.ImageMetadata.MetadataSet)
+	imageXml, err := xml.Marshal(onDemandDataset.ImageMetadata.MetadataSet)
 	if err != nil {
 		return fmt.Errorf("failed to marshal image: %w", err)
 	}
 	if _, err := insertMetadataFileStmt.ExecContext(ctx,
-		dodDataset.Accession,
-		dodDataset.ImageMetadata.MetadataFileType(),
-		dodDataset.ImageMetadata.Accession,
+		onDemandDataset.Accession,
+		onDemandDataset.ImageMetadata.MetadataFileType(),
+		onDemandDataset.ImageMetadata.Accession,
 		imageXml,
 	); err != nil {
 		return fmt.Errorf("failed to insert image metadata: %w", err)
 	}
 
-	observationXml, err := xml.Marshal(dodDataset.ObservationMetadata.MetadataSet)
+	observationXml, err := xml.Marshal(onDemandDataset.ObservationMetadata.MetadataSet)
 	if err != nil {
 		return fmt.Errorf("failed to marshal observation: %w", err)
 	}
 	if _, err := insertMetadataFileStmt.ExecContext(ctx,
-		dodDataset.Accession,
-		dodDataset.ObservationMetadata.MetadataFileType(),
-		dodDataset.ObservationMetadata.Accession,
+		onDemandDataset.Accession,
+		onDemandDataset.ObservationMetadata.MetadataFileType(),
+		onDemandDataset.ObservationMetadata.Accession,
 		observationXml,
 	); err != nil {
 		return fmt.Errorf("failed to insert observation metadata: %w", err)
 	}
 
-	if dodDataset.ObserverMetadata != nil {
-		observerXml, err := xml.Marshal(dodDataset.ObserverMetadata.MetadataSet)
+	if onDemandDataset.ObserverMetadata != nil {
+		observerXml, err := xml.Marshal(onDemandDataset.ObserverMetadata.MetadataSet)
 		if err != nil {
 			return fmt.Errorf("failed to marshal observer: %w", err)
 		}
 		if _, err := insertMetadataFileStmt.ExecContext(ctx,
-			dodDataset.Accession,
-			dodDataset.ObserverMetadata.MetadataFileType(),
-			dodDataset.ObserverMetadata.Accession,
+			onDemandDataset.Accession,
+			onDemandDataset.ObserverMetadata.MetadataFileType(),
+			onDemandDataset.ObserverMetadata.Accession,
 			observerXml,
 		); err != nil {
 			return fmt.Errorf("failed to insert observer metadata: %w", err)
 		}
 	}
 
-	policyXml, err := xml.Marshal(dodDataset.PolicyMetadata.MetadataSet)
+	policyXml, err := xml.Marshal(onDemandDataset.PolicyMetadata.MetadataSet)
 	if err != nil {
 		return fmt.Errorf("failed to marshal policy: %w", err)
 	}
 	if _, err := insertMetadataFileStmt.ExecContext(ctx,
-		dodDataset.Accession,
-		dodDataset.PolicyMetadata.MetadataFileType(),
-		dodDataset.PolicyMetadata.Accession,
+		onDemandDataset.Accession,
+		onDemandDataset.PolicyMetadata.MetadataFileType(),
+		onDemandDataset.PolicyMetadata.Accession,
 		policyXml,
 	); err != nil {
 		return fmt.Errorf("failed to insert policy metadata: %w", err)
 	}
 
-	remsXml, err := xml.Marshal(dodDataset.RemsMetadata.MetadataSet)
+	remsXml, err := xml.Marshal(onDemandDataset.RemsMetadata.MetadataSet)
 	if err != nil {
 		return fmt.Errorf("failed to marshal rems: %w", err)
 	}
 	if _, err := insertMetadataFileStmt.ExecContext(ctx,
-		dodDataset.Accession,
-		dodDataset.RemsMetadata.MetadataFileType(),
-		dodDataset.RemsMetadata.Accession,
+		onDemandDataset.Accession,
+		onDemandDataset.RemsMetadata.MetadataFileType(),
+		onDemandDataset.RemsMetadata.Accession,
 		remsXml,
 	); err != nil {
 		return fmt.Errorf("failed to insert rems metadata: %w", err)
 	}
 
-	sampleXml, err := xml.Marshal(dodDataset.SampleMetadata.MetadataSet)
+	sampleXml, err := xml.Marshal(onDemandDataset.SampleMetadata.MetadataSet)
 	if err != nil {
 		return fmt.Errorf("failed to marshal sample: %w", err)
 	}
 	if _, err := insertMetadataFileStmt.ExecContext(ctx,
-		dodDataset.Accession,
-		dodDataset.SampleMetadata.MetadataFileType(),
-		dodDataset.SampleMetadata.Accession,
+		onDemandDataset.Accession,
+		onDemandDataset.SampleMetadata.MetadataFileType(),
+		onDemandDataset.SampleMetadata.Accession,
 		sampleXml,
 	); err != nil {
 		return fmt.Errorf("failed to insert sample metadata: %w", err)
 	}
 
-	stainingXml, err := xml.Marshal(dodDataset.StainingMetadata.MetadataSet)
+	stainingXml, err := xml.Marshal(onDemandDataset.StainingMetadata.MetadataSet)
 	if err != nil {
 		return fmt.Errorf("failed to marshal staining: %w", err)
 	}
 	if _, err := insertMetadataFileStmt.ExecContext(ctx,
-		dodDataset.Accession,
-		dodDataset.StainingMetadata.MetadataFileType(),
-		dodDataset.StainingMetadata.Accession,
+		onDemandDataset.Accession,
+		onDemandDataset.StainingMetadata.MetadataFileType(),
+		onDemandDataset.StainingMetadata.Accession,
 		stainingXml,
 	); err != nil {
 		return fmt.Errorf("failed to insert staining metadata: %w", err)
