@@ -28,6 +28,7 @@ func (dmfh *dodMetadataFileHandler) marshalEncryptAndUploadFile(ctx context.Cont
 		}
 
 		enc := xml.NewEncoder(crypt4GHWriter)
+		enc.Indent("", "  ")
 		defer func() {
 			_ = enc.Close()
 		}()

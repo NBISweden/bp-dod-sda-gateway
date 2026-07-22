@@ -119,18 +119,20 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, 
 	}
 
 	fileAccessions := make([]string, 0, len(imageFileNames)+len(datasetMetadataFiles))
+	fileNames := make(map[string]string, len(imageFileNames)+len(datasetMetadataFiles))
 
-	for metadataType, datasetFileAccession := range datasetMetadataFiles {
+	for metadataType, metadataFileAccession := range datasetMetadataFiles {
 		// Exclude rems
 		if metadataType == metadata_models.MetadataFileTypeRems {
 			continue
 		}
-		fileAccessions = append(fileAccessions, datasetFileAccession)
+		fileAccessions = append(fileAccessions, metadataFileAccession)
+		fileNames[metadataFileAccession] = fmt.Sprintf("METADATA/%s.xml.c4gh", metadataType.String())
 	}
 
 	for fileAccession, baseFileName := range imageFileNames {
 		fileAccessions = append(fileAccessions, fileAccession)
-		imageFileNames[fileAccession] = fmt.Sprintf("IMAGES/IMAGE_%s/%s", fileAccession, baseFileName)
+		fileNames[fileAccession] = fmt.Sprintf("IMAGES/IMAGE_%s/%s.c4gh", fileAccession, baseFileName)
 	}
 
 	datasetCreateReq := struct {
@@ -142,7 +144,7 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, 
 		DatasetAccession:  datasetAccession,
 		FileAccessionIDs:  fileAccessions,
 		User:              dmfh.uploadUser,
-		FileDownloadPaths: imageFileNames,
+		FileDownloadPaths: fileNames,
 	}
 
 	reqBody, err := json.Marshal(datasetCreateReq)
