@@ -70,6 +70,7 @@ func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models
 		// Just add policies from one origin dataset as they should all be the same
 		if len(originDataset.Policy.Policies) != 0 {
 			dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies = originDataset.Policy.Policies[:1]
+			dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies[0].Alias = dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies[0].Accession
 			dodDatasetMetadata.PolicyMetadata.MetadataSet.Policies[0].DatasetRef = metadata_models.Reference{
 				Alias:     dodDatasetMetadata.Accession,
 				Accession: dodDatasetMetadata.Accession,
@@ -281,7 +282,8 @@ func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models
 						if originObservation.SpecimenRef.Accession != specimenAccession {
 							continue
 						}
-						for _, observerReference := range originObservation.ObserverRef {
+						for i, observerReference := range originObservation.ObserverRef {
+							originObservation.ObserverRef[i].Alias = originObservation.ObserverRef[i].Accession
 							observerAccessions = append(observerAccessions, observerReference.Accession)
 						}
 						originObservation.Alias = originObservation.Accession
@@ -333,8 +335,11 @@ func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models
 					Value: &metadata_models.Attributes{
 						StringAttributes: []metadata_models.StringAttribute{
 							{
-								Tag:   "tox_study_duration",
-								Value: nil, // TODO validate what this value should be
+								Tag: "tox_study_duration",
+								Value: &metadata_models.NullableString{
+									Value: nil, // TODO validate what this value should be
+									Nil:   true,
+								},
 							},
 						},
 					},

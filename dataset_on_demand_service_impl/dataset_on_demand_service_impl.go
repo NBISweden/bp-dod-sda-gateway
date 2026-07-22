@@ -358,15 +358,15 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 	}), nil
 }
 
-func (d *dodServiceImpl) GetDoDDatasetStatus(ctx context.Context, c *connect.Request[dodservice.GetDoDDatasetStatusRequest]) (*connect.Response[dodservice.GetDoDDatasetStatusResponse], error) {
-	ctx, span := observability.Tracer().Start(ctx, "GetDoDDatasetStatus", trace.WithAttributes(attribute.String("accession", c.Msg.GetOnDemandDatasetAccession())))
+func (d *dodServiceImpl) GetOnDemandDatasetStatus(ctx context.Context, c *connect.Request[dodservice.GetOnDemandDatasetStatusRequest]) (*connect.Response[dodservice.GetOnDemandDatasetStatusResponse], error) {
+	ctx, span := observability.Tracer().Start(ctx, "GetOnDemandDatasetStatus", trace.WithAttributes(attribute.String("accession", c.Msg.GetOnDemandDatasetAccession())))
 	defer span.End()
 
 	if c.Msg.GetOnDemandDatasetAccession() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty dod dataset accession"))
 	}
 
-	dodDatasetReleased, err := database.IsOnDemandDatasetPublished(ctx, c.Msg.GetOnDemandDatasetAccession())
+	onDemandDatasetReleased, err := database.IsOnDemandDatasetPublished(ctx, c.Msg.GetOnDemandDatasetAccession())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, nil)
@@ -376,12 +376,12 @@ func (d *dodServiceImpl) GetDoDDatasetStatus(ctx context.Context, c *connect.Req
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
-	res := dodservice.GetDoDDatasetStatusResponse{
-		Status: dodservice.GetDoDDatasetStatusResponse_STATUS_CREATING,
+	res := dodservice.GetOnDemandDatasetStatusResponse{
+		Status: dodservice.GetOnDemandDatasetStatusResponse_STATUS_CREATING,
 	}
 
-	if dodDatasetReleased {
-		res.Status = dodservice.GetDoDDatasetStatusResponse_STATUS_RELEASED
+	if onDemandDatasetReleased {
+		res.Status = dodservice.GetOnDemandDatasetStatusResponse_STATUS_RELEASED
 	}
 
 	return connect.NewResponse(&res), nil

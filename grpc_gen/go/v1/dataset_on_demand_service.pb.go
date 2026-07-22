@@ -21,52 +21,52 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type GetDoDDatasetStatusResponse_Status int32
+type GetOnDemandDatasetStatusResponse_Status int32
 
 const (
-	GetDoDDatasetStatusResponse_STATUS_INVALID  GetDoDDatasetStatusResponse_Status = 0
-	GetDoDDatasetStatusResponse_STATUS_CREATING GetDoDDatasetStatusResponse_Status = 1
-	GetDoDDatasetStatusResponse_STATUS_RELEASED GetDoDDatasetStatusResponse_Status = 2
+	GetOnDemandDatasetStatusResponse_STATUS_INVALID  GetOnDemandDatasetStatusResponse_Status = 0
+	GetOnDemandDatasetStatusResponse_STATUS_CREATING GetOnDemandDatasetStatusResponse_Status = 1
+	GetOnDemandDatasetStatusResponse_STATUS_RELEASED GetOnDemandDatasetStatusResponse_Status = 2
 )
 
-// Enum value maps for GetDoDDatasetStatusResponse_Status.
+// Enum value maps for GetOnDemandDatasetStatusResponse_Status.
 var (
-	GetDoDDatasetStatusResponse_Status_name = map[int32]string{
+	GetOnDemandDatasetStatusResponse_Status_name = map[int32]string{
 		0: "STATUS_INVALID",
 		1: "STATUS_CREATING",
 		2: "STATUS_RELEASED",
 	}
-	GetDoDDatasetStatusResponse_Status_value = map[string]int32{
+	GetOnDemandDatasetStatusResponse_Status_value = map[string]int32{
 		"STATUS_INVALID":  0,
 		"STATUS_CREATING": 1,
 		"STATUS_RELEASED": 2,
 	}
 )
 
-func (x GetDoDDatasetStatusResponse_Status) Enum() *GetDoDDatasetStatusResponse_Status {
-	p := new(GetDoDDatasetStatusResponse_Status)
+func (x GetOnDemandDatasetStatusResponse_Status) Enum() *GetOnDemandDatasetStatusResponse_Status {
+	p := new(GetOnDemandDatasetStatusResponse_Status)
 	*p = x
 	return p
 }
 
-func (x GetDoDDatasetStatusResponse_Status) String() string {
+func (x GetOnDemandDatasetStatusResponse_Status) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (GetDoDDatasetStatusResponse_Status) Descriptor() protoreflect.EnumDescriptor {
+func (GetOnDemandDatasetStatusResponse_Status) Descriptor() protoreflect.EnumDescriptor {
 	return file_v1_dataset_on_demand_service_proto_enumTypes[0].Descriptor()
 }
 
-func (GetDoDDatasetStatusResponse_Status) Type() protoreflect.EnumType {
+func (GetOnDemandDatasetStatusResponse_Status) Type() protoreflect.EnumType {
 	return &file_v1_dataset_on_demand_service_proto_enumTypes[0]
 }
 
-func (x GetDoDDatasetStatusResponse_Status) Number() protoreflect.EnumNumber {
+func (x GetOnDemandDatasetStatusResponse_Status) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use GetDoDDatasetStatusResponse_Status.Descriptor instead.
-func (GetDoDDatasetStatusResponse_Status) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use GetOnDemandDatasetStatusResponse_Status.Descriptor instead.
+func (GetOnDemandDatasetStatusResponse_Status) EnumDescriptor() ([]byte, []int) {
 	return file_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{5, 0}
 }
 
@@ -246,27 +246,27 @@ func (x *RequestDatasetCreationResponse) GetOnDemandDatasetAccession() string {
 	return ""
 }
 
-type GetDoDDatasetStatusRequest struct {
+type GetOnDemandDatasetStatusRequest struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
 	OnDemandDatasetAccession string                 `protobuf:"bytes,1,opt,name=on_demand_dataset_accession,json=onDemandDatasetAccession,proto3" json:"on_demand_dataset_accession,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
 
-func (x *GetDoDDatasetStatusRequest) Reset() {
-	*x = GetDoDDatasetStatusRequest{}
+func (x *GetOnDemandDatasetStatusRequest) Reset() {
+	*x = GetOnDemandDatasetStatusRequest{}
 	mi := &file_v1_dataset_on_demand_service_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetDoDDatasetStatusRequest) String() string {
+func (x *GetOnDemandDatasetStatusRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetDoDDatasetStatusRequest) ProtoMessage() {}
+func (*GetOnDemandDatasetStatusRequest) ProtoMessage() {}
 
-func (x *GetDoDDatasetStatusRequest) ProtoReflect() protoreflect.Message {
+func (x *GetOnDemandDatasetStatusRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_v1_dataset_on_demand_service_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -278,39 +278,39 @@ func (x *GetDoDDatasetStatusRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetDoDDatasetStatusRequest.ProtoReflect.Descriptor instead.
-func (*GetDoDDatasetStatusRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetOnDemandDatasetStatusRequest.ProtoReflect.Descriptor instead.
+func (*GetOnDemandDatasetStatusRequest) Descriptor() ([]byte, []int) {
 	return file_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *GetDoDDatasetStatusRequest) GetOnDemandDatasetAccession() string {
+func (x *GetOnDemandDatasetStatusRequest) GetOnDemandDatasetAccession() string {
 	if x != nil {
 		return x.OnDemandDatasetAccession
 	}
 	return ""
 }
 
-type GetDoDDatasetStatusResponse struct {
-	state         protoimpl.MessageState             `protogen:"open.v1"`
-	Status        GetDoDDatasetStatusResponse_Status `protobuf:"varint,1,opt,name=status,proto3,enum=dataset_on_demand.GetDoDDatasetStatusResponse_Status" json:"status,omitempty"`
+type GetOnDemandDatasetStatusResponse struct {
+	state         protoimpl.MessageState                  `protogen:"open.v1"`
+	Status        GetOnDemandDatasetStatusResponse_Status `protobuf:"varint,1,opt,name=status,proto3,enum=dataset_on_demand.GetOnDemandDatasetStatusResponse_Status" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetDoDDatasetStatusResponse) Reset() {
-	*x = GetDoDDatasetStatusResponse{}
+func (x *GetOnDemandDatasetStatusResponse) Reset() {
+	*x = GetOnDemandDatasetStatusResponse{}
 	mi := &file_v1_dataset_on_demand_service_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetDoDDatasetStatusResponse) String() string {
+func (x *GetOnDemandDatasetStatusResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetDoDDatasetStatusResponse) ProtoMessage() {}
+func (*GetOnDemandDatasetStatusResponse) ProtoMessage() {}
 
-func (x *GetDoDDatasetStatusResponse) ProtoReflect() protoreflect.Message {
+func (x *GetOnDemandDatasetStatusResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_v1_dataset_on_demand_service_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -322,16 +322,16 @@ func (x *GetDoDDatasetStatusResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetDoDDatasetStatusResponse.ProtoReflect.Descriptor instead.
-func (*GetDoDDatasetStatusResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetOnDemandDatasetStatusResponse.ProtoReflect.Descriptor instead.
+func (*GetOnDemandDatasetStatusResponse) Descriptor() ([]byte, []int) {
 	return file_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *GetDoDDatasetStatusResponse) GetStatus() GetDoDDatasetStatusResponse_Status {
+func (x *GetOnDemandDatasetStatusResponse) GetStatus() GetOnDemandDatasetStatusResponse_Status {
 	if x != nil {
 		return x.Status
 	}
-	return GetDoDDatasetStatusResponse_STATUS_INVALID
+	return GetOnDemandDatasetStatusResponse_STATUS_INVALID
 }
 
 var File_v1_dataset_on_demand_service_proto protoreflect.FileDescriptor
@@ -346,19 +346,19 @@ const file_v1_dataset_on_demand_service_proto_rawDesc = "" +
 	"\x10image_accessions\x18\x01 \x03(\tR\x0fimageAccessions\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\"_\n" +
 	"\x1eRequestDatasetCreationResponse\x12=\n" +
-	"\x1bon_demand_dataset_accession\x18\x01 \x01(\tR\x18onDemandDatasetAccession\"[\n" +
-	"\x1aGetDoDDatasetStatusRequest\x12=\n" +
-	"\x1bon_demand_dataset_accession\x18\x01 \x01(\tR\x18onDemandDatasetAccession\"\xb4\x01\n" +
-	"\x1bGetDoDDatasetStatusResponse\x12M\n" +
-	"\x06status\x18\x01 \x01(\x0e25.dataset_on_demand.GetDoDDatasetStatusResponse.StatusR\x06status\"F\n" +
+	"\x1bon_demand_dataset_accession\x18\x01 \x01(\tR\x18onDemandDatasetAccession\"`\n" +
+	"\x1fGetOnDemandDatasetStatusRequest\x12=\n" +
+	"\x1bon_demand_dataset_accession\x18\x01 \x01(\tR\x18onDemandDatasetAccession\"\xbe\x01\n" +
+	" GetOnDemandDatasetStatusResponse\x12R\n" +
+	"\x06status\x18\x01 \x01(\x0e2:.dataset_on_demand.GetOnDemandDatasetStatusResponse.StatusR\x06status\"F\n" +
 	"\x06Status\x12\x12\n" +
 	"\x0eSTATUS_INVALID\x10\x00\x12\x13\n" +
 	"\x0fSTATUS_CREATING\x10\x01\x12\x13\n" +
-	"\x0fSTATUS_RELEASED\x10\x022\xfa\x02\n" +
+	"\x0fSTATUS_RELEASED\x10\x022\x8a\x03\n" +
 	"\x16DatasetOnDemandService\x12k\n" +
 	"\x10NewOriginDataset\x12*.dataset_on_demand.NewOriginDatasetRequest\x1a+.dataset_on_demand.NewOriginDatasetResponse\x12}\n" +
-	"\x16RequestDatasetCreation\x120.dataset_on_demand.RequestDatasetCreationRequest\x1a1.dataset_on_demand.RequestDatasetCreationResponse\x12t\n" +
-	"\x13GetDoDDatasetStatus\x12-.dataset_on_demand.GetDoDDatasetStatusRequest\x1a..dataset_on_demand.GetDoDDatasetStatusResponseB\xc8\x01\n" +
+	"\x16RequestDatasetCreation\x120.dataset_on_demand.RequestDatasetCreationRequest\x1a1.dataset_on_demand.RequestDatasetCreationResponse\x12\x83\x01\n" +
+	"\x18GetOnDemandDatasetStatus\x122.dataset_on_demand.GetOnDemandDatasetStatusRequest\x1a3.dataset_on_demand.GetOnDemandDatasetStatusResponseB\xc8\x01\n" +
 	"\x15com.dataset_on_demandB\x1bDatasetOnDemandServiceProtoP\x01Z6github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/v1\xa2\x02\x03DXX\xaa\x02\x0fDatasetOnDemand\xca\x02\x0fDatasetOnDemand\xe2\x02\x1bDatasetOnDemand\\GPBMetadata\xea\x02\x0fDatasetOnDemandb\x06proto3"
 
 var (
@@ -376,22 +376,22 @@ func file_v1_dataset_on_demand_service_proto_rawDescGZIP() []byte {
 var file_v1_dataset_on_demand_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_v1_dataset_on_demand_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_v1_dataset_on_demand_service_proto_goTypes = []any{
-	(GetDoDDatasetStatusResponse_Status)(0), // 0: dataset_on_demand.GetDoDDatasetStatusResponse.Status
-	(*NewOriginDatasetRequest)(nil),         // 1: dataset_on_demand.NewOriginDatasetRequest
-	(*NewOriginDatasetResponse)(nil),        // 2: dataset_on_demand.NewOriginDatasetResponse
-	(*RequestDatasetCreationRequest)(nil),   // 3: dataset_on_demand.RequestDatasetCreationRequest
-	(*RequestDatasetCreationResponse)(nil),  // 4: dataset_on_demand.RequestDatasetCreationResponse
-	(*GetDoDDatasetStatusRequest)(nil),      // 5: dataset_on_demand.GetDoDDatasetStatusRequest
-	(*GetDoDDatasetStatusResponse)(nil),     // 6: dataset_on_demand.GetDoDDatasetStatusResponse
+	(GetOnDemandDatasetStatusResponse_Status)(0), // 0: dataset_on_demand.GetOnDemandDatasetStatusResponse.Status
+	(*NewOriginDatasetRequest)(nil),              // 1: dataset_on_demand.NewOriginDatasetRequest
+	(*NewOriginDatasetResponse)(nil),             // 2: dataset_on_demand.NewOriginDatasetResponse
+	(*RequestDatasetCreationRequest)(nil),        // 3: dataset_on_demand.RequestDatasetCreationRequest
+	(*RequestDatasetCreationResponse)(nil),       // 4: dataset_on_demand.RequestDatasetCreationResponse
+	(*GetOnDemandDatasetStatusRequest)(nil),      // 5: dataset_on_demand.GetOnDemandDatasetStatusRequest
+	(*GetOnDemandDatasetStatusResponse)(nil),     // 6: dataset_on_demand.GetOnDemandDatasetStatusResponse
 }
 var file_v1_dataset_on_demand_service_proto_depIdxs = []int32{
-	0, // 0: dataset_on_demand.GetDoDDatasetStatusResponse.status:type_name -> dataset_on_demand.GetDoDDatasetStatusResponse.Status
+	0, // 0: dataset_on_demand.GetOnDemandDatasetStatusResponse.status:type_name -> dataset_on_demand.GetOnDemandDatasetStatusResponse.Status
 	1, // 1: dataset_on_demand.DatasetOnDemandService.NewOriginDataset:input_type -> dataset_on_demand.NewOriginDatasetRequest
 	3, // 2: dataset_on_demand.DatasetOnDemandService.RequestDatasetCreation:input_type -> dataset_on_demand.RequestDatasetCreationRequest
-	5, // 3: dataset_on_demand.DatasetOnDemandService.GetDoDDatasetStatus:input_type -> dataset_on_demand.GetDoDDatasetStatusRequest
+	5, // 3: dataset_on_demand.DatasetOnDemandService.GetOnDemandDatasetStatus:input_type -> dataset_on_demand.GetOnDemandDatasetStatusRequest
 	2, // 4: dataset_on_demand.DatasetOnDemandService.NewOriginDataset:output_type -> dataset_on_demand.NewOriginDatasetResponse
 	4, // 5: dataset_on_demand.DatasetOnDemandService.RequestDatasetCreation:output_type -> dataset_on_demand.RequestDatasetCreationResponse
-	6, // 6: dataset_on_demand.DatasetOnDemandService.GetDoDDatasetStatus:output_type -> dataset_on_demand.GetDoDDatasetStatusResponse
+	6, // 6: dataset_on_demand.DatasetOnDemandService.GetOnDemandDatasetStatus:output_type -> dataset_on_demand.GetOnDemandDatasetStatusResponse
 	4, // [4:7] is the sub-list for method output_type
 	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
