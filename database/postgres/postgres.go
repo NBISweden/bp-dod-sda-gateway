@@ -240,7 +240,7 @@ func (db *pgDb) ListUnreleasedOnDemandDatasetMetadataFiles(ctx context.Context) 
 	return db.listUnreleasedOnDemandDatasetMetadataFileAccessions(ctx, nil)
 }
 
-func (db *pgDb) ListOnDemandDatasetImageFiles(ctx context.Context, onDemandDatasetAccession string) (map[string]string, error) {
+func (db *pgDb) ListOnDemandDatasetImageFiles(ctx context.Context, onDemandDatasetAccession string) (map[string]map[string]string, error) {
 	return db.listOnDemandDatasetImageFiles(ctx, nil, onDemandDatasetAccession)
 }
 

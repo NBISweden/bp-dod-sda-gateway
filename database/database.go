@@ -40,7 +40,7 @@ type functions interface {
 
 	ListUnreleasedOnDemandDatasetMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error)
 
-	ListOnDemandDatasetImageFiles(ctx context.Context, datasetAccession string) (map[string]string, error)
+	ListOnDemandDatasetImageFiles(ctx context.Context, datasetAccession string) (map[string]map[string]string, error)
 
 	GetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error)
 	IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error)
@@ -68,7 +68,7 @@ func ListUnreleasedOnDemandDatasetMetadataFiles(ctx context.Context) (map[string
 	return db.ListUnreleasedOnDemandDatasetMetadataFiles(ctx)
 }
 
-func ListOnDemandDatasetImageFileAccessions(ctx context.Context, datasetAccession string) (map[string]string, error) {
+func ListOnDemandDatasetImageFileAccessions(ctx context.Context, datasetAccession string) (map[string]map[string]string, error) {
 	return db.ListOnDemandDatasetImageFiles(ctx, datasetAccession)
 }
 

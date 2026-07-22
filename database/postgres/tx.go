@@ -58,7 +58,7 @@ func (tx *pgTx) ListUnreleasedOnDemandDatasetMetadataFiles(ctx context.Context) 
 	return tx.listUnreleasedOnDemandDatasetMetadataFileAccessions(ctx, tx.tx)
 }
 
-func (tx *pgTx) ListOnDemandDatasetImageFiles(ctx context.Context, onDemandDatasetAccession string) (map[string]string, error) {
+func (tx *pgTx) ListOnDemandDatasetImageFiles(ctx context.Context, onDemandDatasetAccession string) (map[string]map[string]string, error) {
 	return tx.listOnDemandDatasetImageFiles(ctx, tx.tx, onDemandDatasetAccession)
 }
 

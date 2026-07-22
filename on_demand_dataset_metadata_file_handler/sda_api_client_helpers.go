@@ -109,7 +109,7 @@ func (dmfh *dodMetadataFileHandler) triggerFileAccession(ctx context.Context, fi
 	return nil
 }
 
-func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string, imageFileNames map[string]string) error {
+func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string, imageAccessionFileNames map[string]map[string]string) error {
 	ctx, span := observability.Tracer().Start(ctx, "triggerDatasetCreation", trace.WithAttributes(attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession)))
 	defer span.End()
 
@@ -118,8 +118,8 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, 
 		return fmt.Errorf("invalid base URL: %w", err)
 	}
 
-	fileAccessions := make([]string, 0, len(imageFileNames)+len(datasetMetadataFiles))
-	fileNames := make(map[string]string, len(imageFileNames)+len(datasetMetadataFiles))
+	var fileAccessions []string
+	fileNames := make(map[string]string)
 
 	for metadataType, metadataFileAccession := range datasetMetadataFiles {
 		// Exclude rems
@@ -130,9 +130,11 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, 
 		fileNames[metadataFileAccession] = fmt.Sprintf("METADATA/%s.xml.c4gh", metadataType.String())
 	}
 
-	for fileAccession, baseFileName := range imageFileNames {
-		fileAccessions = append(fileAccessions, fileAccession)
-		fileNames[fileAccession] = fmt.Sprintf("IMAGES/IMAGE_%s/%s.c4gh", fileAccession, baseFileName)
+	for imageAccession, imageFileNames := range imageAccessionFileNames {
+		for fileAccession, baseFileName := range imageFileNames {
+			fileAccessions = append(fileAccessions, fileAccession)
+			fileNames[fileAccession] = fmt.Sprintf("IMAGES/IMAGE_%s/%s.c4gh", imageAccession, baseFileName)
+		}
 	}
 
 	datasetCreateReq := struct {
