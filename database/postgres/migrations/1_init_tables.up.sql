@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS image_file
   accession         TEXT NOT NULL PRIMARY KEY,
   dataset_accession TEXT NOT NULL REFERENCES origin_dataset (accession),
   image_accession   TEXT NOT NULL REFERENCES dataset_image (accession),
-  base_file_name    TEXT NULL NULL
+  base_file_name    TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS on_demand_dataset

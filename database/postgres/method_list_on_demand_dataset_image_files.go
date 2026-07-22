@@ -8,7 +8,7 @@ import (
 const listDatasetOnDemandImageFilesQuery = "listDatasetOnDemandImageFiles"
 
 func init() {
-	queries[listDatasetOnDemandImageFilesQuery] = `SELECT if.accession, if.base_file_nmae
+	queries[listDatasetOnDemandImageFilesQuery] = `SELECT if.accession, if.base_file_name
 FROM on_demand_dataset_image as oddi
 INNER JOIN dataset_image AS di ON di.accession = oddi.image_accession
 INNER JOIN image_file AS if ON if.image_accession = di.accession

@@ -78,7 +78,7 @@ func init() {
 				remsDemoOrganisationId = viper.GetString(flagName)
 			},
 		}, &config.Flag{
-			Name: "rems.rems_category_id",
+			Name: "rems.category_id",
 			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
 				flagSet.Int(flagName, 0, "The rems category id On Demand Datasets will be created under, if not configured or configured as 0, On Demand Datasets will not be created under any category")
 			},

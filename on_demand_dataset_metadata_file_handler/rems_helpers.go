@@ -125,7 +125,7 @@ func (dmfh *dodMetadataFileHandler) createRemsResource(ctx context.Context, rems
 
 	resourcesCreateRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, createEndpoint, bytes.NewBuffer(reqBody))
 	if err != nil {
-		return -1, fmt.Errorf("failed to build resources reate request: %w", err)
+		return -1, fmt.Errorf("failed to build resources create request: %w", err)
 	}
 
 	resourcesCreateResponseBody, err := dmfh.doRemsRequest(ctx, resourcesCreateRequest)
