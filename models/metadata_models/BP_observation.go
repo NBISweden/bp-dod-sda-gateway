@@ -10,13 +10,14 @@ type ObservationSet struct {
 
 type Observation struct {
 	ObjectType
-	AnnotationRef      *Reference          `xml:"ANNOTATION_REF"`
-	CaseRef            *Reference          `xml:"CASE_REF"`
-	BiologicalBeingRef *Reference          `xml:"BIOLOGICAL_BEING_REF"`
-	SpecimenRef        *Reference          `xml:"SPECIMEN_REF"`
-	BlockRef           *Reference          `xml:"BLOCK_REF"`
-	SlideRef           *Reference          `xml:"SLIDE_REF"`
-	ImageRef           *Reference          `xml:"IMAGE_REF"`
+	// Observation is either linked to an AnnotationRef, CaseRef, BiologicalBeingRef, SpecimenRef, BlockRef, SlideRef, ImageRef
+	AnnotationRef      *Reference          `xml:"ANNOTATION_REF,omitempty"`
+	CaseRef            *Reference          `xml:"CASE_REF,omitempty"`
+	BiologicalBeingRef *Reference          `xml:"BIOLOGICAL_BEING_REF,omitempty"`
+	SpecimenRef        *Reference          `xml:"SPECIMEN_REF,omitempty"`
+	BlockRef           *Reference          `xml:"BLOCK_REF,omitempty"`
+	SlideRef           *Reference          `xml:"SLIDE_REF,omitempty"`
+	ImageRef           *Reference          `xml:"IMAGE_REF,omitempty"`
 	ObserverRef        []Reference         `xml:"OBSERVER_REF"`
 	Statement          Statement           `xml:"STATEMENT"`
 	Attributes         *NullableAttributes `xml:"ATTRIBUTES"`

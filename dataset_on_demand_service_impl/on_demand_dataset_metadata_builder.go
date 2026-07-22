@@ -329,7 +329,17 @@ func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models
 				AnnotationRef:            nil,
 				ObservationRef:           nil,
 				ComplementsDatasetRef:    nil,
-				Attributes:               nil,
+				Attributes: &metadata_models.NullableAttributes{
+					Value: &metadata_models.Attributes{
+						StringAttributes: []metadata_models.StringAttribute{
+							{
+								Tag:   "tox_study_duration",
+								Value: nil, // TODO validate what this value should be
+							},
+						},
+					},
+					Nil: false,
+				},
 			},
 		},
 	}
