@@ -231,6 +231,11 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 
 	originDatasetImages := make(map[string][]string)
 
+	// Create a new context without cancel such that if user cancels the request we still proceed to finish the on demand dataset registration
+	// This is to avoid scenarios where caller cancels the request while uploading and triggering ingestion for the metadata files, and where it could end up in a partial state
+	ctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	defer cancel()
+
 	tx, err := database.BeginTransaction(ctx)
 	if err != nil {
 		slog.Warn("failed to begin database transaction", "error", err)
@@ -339,11 +344,14 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
+	// For now, we risk failing to commit after having uploaded and triggered ingestion for the metadata files(done by RegisterOnDemandDataset), but should be ok for now
 	if err := tx.Commit(); err != nil {
 		slog.Warn("failed to commit database transaction", "error", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
+
+	slog.Info("on demand dataset registered successfully", "accession", onDemandDataset.Accession, "user", c.Msg.GetUser())
 
 	return connect.NewResponse(&dodservice.RequestDatasetCreationResponse{
 		OnDemandDatasetAccession: onDemandDataset.Accession,
