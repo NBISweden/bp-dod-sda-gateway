@@ -184,8 +184,8 @@ func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models
 				break
 			}
 
-			var biologicalBeingsAccession string
-			var caseAccession string
+			var biologicalBeingAccessions []string
+			var caseAccessions []string
 
 			currentSpecimenCount := len(specimens)
 			for _, originSpecimen := range originDataset.Sample.Specimens {
@@ -203,43 +203,53 @@ func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models
 				if !found {
 					continue
 				}
-				biologicalBeingsAccession = originSpecimen.ExtractedFromRef.Accession
+				biologicalBeingAccessions = append(biologicalBeingAccessions, originSpecimen.ExtractedFromRef.Accession)
 				if originSpecimen.PartOfCaseRef != nil {
 					originSpecimen.PartOfCaseRef.Alias = originSpecimen.PartOfCaseRef.Accession
-					caseAccession = originSpecimen.PartOfCaseRef.Accession
+					caseAccessions = append(caseAccessions, originSpecimen.PartOfCaseRef.Accession)
 				}
 				originSpecimen.Alias = originSpecimen.Accession
 				originSpecimen.ExtractedFromRef.Alias = originSpecimen.ExtractedFromRef.Accession
 				specimens[originSpecimen.Accession] = originSpecimen
 			}
 
-			for _, originCase := range originDataset.Sample.Cases {
-				if originCase.Accession != caseAccession {
-					continue
+			currentBiologicalBeings := len(biologicalBeings)
+			for _, biologicalBeingsAccession := range biologicalBeingAccessions {
+				if currentBiologicalBeings+len(biologicalBeingAccessions) == len(biologicalBeings) {
+					break
 				}
-				originCase.Alias = originCase.Accession
-				originCase.BiologicalBeingRef.Alias = originCase.BiologicalBeingRef.Accession
-				cases[originCase.Accession] = originCase
 
-				break
+				for _, originBiologicalBeing := range originDataset.Sample.BiologicalBeings {
+					if originBiologicalBeing.Accession != biologicalBeingsAccession {
+						continue
+					}
+					originBiologicalBeing.Alias = originBiologicalBeing.Accession
+					biologicalBeings[originBiologicalBeing.Accession] = originBiologicalBeing
+				}
 			}
 
-			for _, originBiologicalBeing := range originDataset.Sample.BiologicalBeings {
-				if originBiologicalBeing.Accession != biologicalBeingsAccession {
-					continue
+			currentCases := len(cases)
+			for _, caseAccession := range caseAccessions {
+				if currentCases+len(caseAccessions) == len(cases) {
+					break
 				}
-				originBiologicalBeing.Alias = originBiologicalBeing.Accession
-				biologicalBeings[originBiologicalBeing.Accession] = originBiologicalBeing
 
-				break
+				for _, originCase := range originDataset.Sample.Cases {
+					if originCase.Accession != caseAccession {
+						continue
+					}
+					originCase.Alias = originCase.Accession
+					originCase.BiologicalBeingRef.Alias = originCase.BiologicalBeingRef.Accession
+					cases[originCase.Accession] = originCase
+				}
 			}
 
-			for _, originStain := range originDataset.Staining.Staining {
-				if originStain.Accession != stainingAccession {
+			for _, originStaining := range originDataset.Staining.Staining {
+				if originStaining.Accession != stainingAccession {
 					continue
 				}
-				originStain.Alias = originStain.Accession
-				stainings[originStain.Accession] = originStain
+				originStaining.Alias = originStaining.Accession
+				stainings[originStaining.Accession] = originStaining
 
 				break
 			}
@@ -247,27 +257,19 @@ func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models
 			var observerAccessions []string
 			for _, originObservation := range originDataset.Observation.Observations {
 				// nolint: nestif
-				if (originObservation.CaseRef != nil && originObservation.CaseRef.Accession == caseAccession) ||
-					(originObservation.SlideRef != nil && originObservation.SlideRef.Accession == slideAccession) ||
+				if (originObservation.SlideRef != nil && originObservation.SlideRef.Accession == slideAccession) ||
 					(originObservation.BlockRef != nil && originObservation.BlockRef.Accession == blockAccession) ||
-					(originObservation.BiologicalBeingRef != nil && originObservation.BiologicalBeingRef.Accession == biologicalBeingsAccession) ||
 					(originObservation.ImageRef != nil && originObservation.ImageRef.Accession == imageAccession) {
 					for i, observerReference := range originObservation.ObserverRef {
 						originObservation.ObserverRef[i].Alias = originObservation.ObserverRef[i].Accession
 						observerAccessions = append(observerAccessions, observerReference.Accession)
 					}
 					originObservation.Alias = originObservation.Accession
-					if originObservation.CaseRef != nil {
-						originObservation.CaseRef.Alias = originObservation.CaseRef.Accession
-					}
 					if originObservation.SlideRef != nil {
 						originObservation.SlideRef.Alias = originObservation.SlideRef.Accession
 					}
 					if originObservation.BlockRef != nil {
 						originObservation.BlockRef.Alias = originObservation.BlockRef.Accession
-					}
-					if originObservation.BiologicalBeingRef != nil {
-						originObservation.BiologicalBeingRef.Alias = originObservation.BiologicalBeingRef.Accession
 					}
 					if originObservation.ImageRef != nil {
 						originObservation.ImageRef.Alias = originObservation.ImageRef.Accession
@@ -275,6 +277,32 @@ func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models
 					observations[originObservation.Accession] = originObservation
 
 					continue
+				}
+
+				for _, biologicalBeingAccession := range biologicalBeingAccessions {
+					if originObservation.BiologicalBeingRef != nil && originObservation.BiologicalBeingRef.Accession == biologicalBeingAccession {
+						for i, observerReference := range originObservation.ObserverRef {
+							originObservation.ObserverRef[i].Alias = originObservation.ObserverRef[i].Accession
+							observerAccessions = append(observerAccessions, observerReference.Accession)
+						}
+						originObservation.BiologicalBeingRef.Alias = originObservation.BiologicalBeingRef.Accession
+						observations[originObservation.Accession] = originObservation
+
+						break
+					}
+				}
+
+				for _, casesAccession := range caseAccessions {
+					if originObservation.CaseRef != nil && originObservation.CaseRef.Accession == casesAccession {
+						originObservation.CaseRef.Alias = originObservation.CaseRef.Accession
+						for i, observerReference := range originObservation.ObserverRef {
+							originObservation.ObserverRef[i].Alias = originObservation.ObserverRef[i].Accession
+							observerAccessions = append(observerAccessions, observerReference.Accession)
+						}
+						observations[originObservation.Accession] = originObservation
+
+						break
+					}
 				}
 
 				if originObservation.SpecimenRef != nil {
