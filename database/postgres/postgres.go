@@ -229,8 +229,8 @@ func (db *pgDb) GetOriginDataset(ctx context.Context, accession string) (*models
 	return db.getOriginDataset(ctx, nil, accession)
 }
 
-func (db *pgDb) InsertOnDemandDataset(ctx context.Context, onDemandDataset *models.OnDemandDataset) error {
-	return db.insertOnDemandDataset(ctx, nil, onDemandDataset)
+func (db *pgDb) InsertOnDemandDataset(ctx context.Context, onDemandDataset *models.OnDemandDataset, imageAccessionHash string) error {
+	return db.insertOnDemandDataset(ctx, nil, onDemandDataset, imageAccessionHash)
 }
 
 func (db *pgDb) InsertOnDemandDatasetImage(ctx context.Context, onDemandDatasetAccession, imageAccession string) error {
@@ -250,6 +250,10 @@ func (db *pgDb) SetOnDemandDatasetReleased(ctx context.Context, onDemandDatasetA
 
 func (db *pgDb) IsOnDemandDatasetReleased(ctx context.Context, onDemandDatasetAccession string) (bool, error) {
 	return db.isOnDemandDatasetReleased(ctx, nil, onDemandDatasetAccession)
+}
+
+func (db *pgDb) GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, error) {
+	return db.getOnDemandDatasetAccessionFromImageAccessions(ctx, nil, imageAccessionHash)
 }
 func (db *pgDb) GetOnDemandDatasetRemsMetadata(ctx context.Context, onDemandDatasetAccession string) (*metadata_models.RemsSet, error) {
 	return db.getOnDemandDatasetRemsMetadata(ctx, nil, onDemandDatasetAccession)

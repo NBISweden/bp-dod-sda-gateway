@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS on_demand_dataset
   accession         TEXT PRIMARY KEY,
   requested_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
   requested_by_user TEXT                     NOT NULL,
-  released_at       TIMESTAMP WITH TIME ZONE
+  released_at       TIMESTAMP WITH TIME ZONE,
+  image_accessions_hash TEXT NOT NULL UNIQUE
 );
 
 CREATE TYPE METADATA_TYPE AS ENUM ('annotation','dataset','image','landing_page','observation','observer','organisation','policy','rems','sample','staining');

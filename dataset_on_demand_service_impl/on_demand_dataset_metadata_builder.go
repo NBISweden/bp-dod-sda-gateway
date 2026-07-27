@@ -13,7 +13,7 @@ import (
 
 // buildOnDemandDataset builds the On Demand Dataset from the origin dataset and the selected images
 // All the aliases in the resulting metadata will be replaced with the relative accession to ensure the aliases for the entities are unique within the created dataset
-func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models.OriginDataset, datasetImages map[string][]string) *models.OnDemandDataset {
+func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models.OriginDataset, datasetImages map[string]map[string]struct{}) *models.OnDemandDataset {
 	_, span := observability.Tracer().Start(ctx, "buildOnDemandDataset")
 	defer span.End()
 
@@ -131,7 +131,7 @@ func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models
 
 		imagesInDataset := datasetImages[originDatasetAccession]
 
-		for _, imageAccession := range imagesInDataset {
+		for imageAccession := range imagesInDataset {
 			var slideAccession string
 
 			for _, originImage := range originDataset.Image.Images {

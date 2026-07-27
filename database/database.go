@@ -32,7 +32,7 @@ type functions interface {
 	GetOriginDatasetAccessionFromImageAccession(ctx context.Context, imageAccession string) (string, error)
 	InsertOriginDataset(ctx context.Context, originDataset *models.OriginDataset) error
 
-	InsertOnDemandDataset(ctx context.Context, onDemandDataset *models.OnDemandDataset) error
+	InsertOnDemandDataset(ctx context.Context, onDemandDataset *models.OnDemandDataset, imageAccessionHash string) error
 	InsertOnDemandDatasetImage(ctx context.Context, onDemandDatasetAccession, imageAccession string) error
 
 	InsertDatasetImage(ctx context.Context, datasetAccession, imageAccession string) error
@@ -43,6 +43,7 @@ type functions interface {
 	ListOnDemandDatasetImageFiles(ctx context.Context, datasetAccession string) (map[string]map[string]string, error)
 
 	GetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error)
+	GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, error)
 	IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error)
 
 	SetOnDemandDatasetReleased(ctx context.Context, datasetAccession string) error
@@ -82,4 +83,8 @@ func GetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string
 
 func IsOnDemandDatasetPublished(ctx context.Context, dodDatasetAccession string) (bool, error) {
 	return db.IsOnDemandDatasetReleased(ctx, dodDatasetAccession)
+}
+
+func GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, error) {
+	return db.GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx, imageAccessionHash)
 }

@@ -14,8 +14,8 @@ const insertOnDemandDatasetMetadataFileQuery = "insertOnDemandDatasetMetadataFil
 const insertOnDemandDatasetCreatedFromOriginQuery = "insertOnDemandDatasetCreatedFromOrigin"
 
 func init() {
-	queries[insertOnDemandDatasetQuery] = `INSERT INTO on_demand_dataset (accession, requested_by_user)
-VALUES($1,$2);`
+	queries[insertOnDemandDatasetQuery] = `INSERT INTO on_demand_dataset (accession, requested_by_user, image_accessions_hash)
+VALUES($1, $2, $3);`
 
 	queries[insertOnDemandDatasetMetadataFileQuery] = `INSERT INTO on_demand_dataset_metadata_file (on_demand_dataset_accession, type, accession, xml_content)
 VALUES($1, $2, $3, $4);`
@@ -23,7 +23,7 @@ VALUES($1, $2, $3, $4);`
 	queries[insertOnDemandDatasetCreatedFromOriginQuery] = `INSERT INTO on_demand_dataset_created_from_origin (on_demand_dataset_accession, origin_accession)
 VALUES($1, $2);`
 }
-func (db *pgDb) insertOnDemandDataset(ctx context.Context, tx *sql.Tx, onDemandDataset *models.OnDemandDataset) error {
+func (db *pgDb) insertOnDemandDataset(ctx context.Context, tx *sql.Tx, onDemandDataset *models.OnDemandDataset, imageAccessionHash string) error {
 	insertDatasetStmt, err := db.getPreparedStmt(tx, insertOnDemandDatasetQuery)
 	if err != nil {
 		return err
@@ -40,6 +40,7 @@ func (db *pgDb) insertOnDemandDataset(ctx context.Context, tx *sql.Tx, onDemandD
 	if _, err := insertDatasetStmt.ExecContext(ctx,
 		onDemandDataset.Accession,
 		onDemandDataset.RequestedByUser,
+		imageAccessionHash,
 	); err != nil {
 		return fmt.Errorf("failed to insert dod dataset: %w", err)
 	}

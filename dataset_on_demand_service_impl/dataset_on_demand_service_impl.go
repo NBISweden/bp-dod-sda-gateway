@@ -2,11 +2,14 @@ package dataset_on_demand_service_impl
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -229,7 +232,24 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user requesting to create on demand dataset must be provided"))
 	}
 
-	originDatasetImages := make(map[string][]string)
+	// calculate the hash of the requested image accession to check for already existing on demand dataset with the same set of images
+	imageAccessionHash := hashImageAccessions(c.Msg.GetImageAccessions())
+	// Possible future improvement, lock by the imageAccessionHash to avoid race condition when multiple concurrent requests to create same dataset
+
+	existingOnDemandDatasetAccession, err := database.GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx, imageAccessionHash)
+	if err != nil {
+		slog.Warn("failed to check for existing on demand dataset image accessions hash", "error", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	if existingOnDemandDatasetAccession != "" {
+		return connect.NewResponse(&dodservice.RequestDatasetCreationResponse{
+			OnDemandDatasetAccession: existingOnDemandDatasetAccession,
+		}), nil
+	}
+
+	originDatasetImages := make(map[string]map[string]struct{})
 
 	// Create a new context without cancel such that if user cancels the request we still proceed to finish the on demand dataset registration
 	// This is to avoid scenarios where caller cancels the request while uploading and triggering ingestion for the metadata files, and where it could end up in a partial state
@@ -262,13 +282,19 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 
 			return nil, connect.NewError(connect.CodeNotFound, nil)
 		}
-		if originDatasetImages[originDatasetAccession] == nil {
-			originDatasetImages[originDatasetAccession] = []string{imageAccession}
+		if _, ok := originDatasetImages[originDatasetAccession]; !ok {
+			originDatasetImages[originDatasetAccession] = map[string]struct{}{imageAccession: {}}
 
 			continue
 		}
 
-		originDatasetImages[originDatasetAccession] = append(originDatasetImages[originDatasetAccession], imageAccession)
+		if _, ok := originDatasetImages[originDatasetAccession][imageAccession]; ok {
+			slog.Info("user requested to combine identical image accessions", "image-accession", imageAccession)
+
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("duplicate image accession requested"))
+		}
+
+		originDatasetImages[originDatasetAccession][imageAccession] = struct{}{}
 	}
 
 	originDatasets := make(map[string]*models.OriginDataset)
@@ -322,14 +348,14 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 	onDemandDataset := buildOnDemandDataset(ctx, originDatasets, originDatasetImages)
 	onDemandDataset.RequestedByUser = c.Msg.GetUser()
 
-	if err := tx.InsertOnDemandDataset(ctx, onDemandDataset); err != nil {
+	if err := tx.InsertOnDemandDataset(ctx, onDemandDataset, imageAccessionHash); err != nil {
 		slog.Warn("failed to insert on demand dataset", "error", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
 	for originAccession, imageAccessions := range originDatasetImages {
-		for _, imageAccession := range imageAccessions {
+		for imageAccession := range imageAccessions {
 			if err := tx.InsertOnDemandDatasetImage(ctx, onDemandDataset.Accession, imageAccession); err != nil {
 				slog.Warn("failed to insert on demand dataset image", "error", err, "origin-accession", originAccession, "image-accession", imageAccession)
 
@@ -385,4 +411,26 @@ func (d *dodServiceImpl) GetOnDemandDatasetStatus(ctx context.Context, c *connec
 	}
 
 	return connect.NewResponse(&res), nil
+}
+
+// hashImageAccessions takes a slice of image accessions, sorts them, removes duplicates and returns a sha256 hash of the slice
+func hashImageAccessions(ids []string) string {
+	sorted := append([]string(nil), ids...)
+	slices.Sort(sorted)
+
+	n := 0
+	for _, id := range sorted {
+		if n == 0 || id != sorted[n-1] {
+			sorted[n] = id
+			n++
+		}
+	}
+	sorted = sorted[:n]
+
+	h := sha256.New()
+	for _, id := range sorted {
+		_, _ = h.Write([]byte(id))
+	}
+
+	return hex.EncodeToString(h.Sum(nil))
 }

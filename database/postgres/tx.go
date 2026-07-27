@@ -47,8 +47,8 @@ func (tx *pgTx) GetOriginDataset(ctx context.Context, accession string) (*models
 	return tx.getOriginDataset(ctx, tx.tx, accession)
 }
 
-func (tx *pgTx) InsertOnDemandDataset(ctx context.Context, onDemandDataset *models.OnDemandDataset) error {
-	return tx.insertOnDemandDataset(ctx, tx.tx, onDemandDataset)
+func (tx *pgTx) InsertOnDemandDataset(ctx context.Context, onDemandDataset *models.OnDemandDataset, imageAccessionHash string) error {
+	return tx.insertOnDemandDataset(ctx, tx.tx, onDemandDataset, imageAccessionHash)
 }
 
 func (tx *pgTx) InsertOnDemandDatasetImage(ctx context.Context, onDemandDatasetAccession, imageAccession string) error {
@@ -68,6 +68,9 @@ func (tx *pgTx) SetOnDemandDatasetReleased(ctx context.Context, onDemandDatasetA
 
 func (tx *pgTx) IsOnDemandDatasetReleased(ctx context.Context, onDemandDatasetAccession string) (bool, error) {
 	return tx.isOnDemandDatasetReleased(ctx, tx.tx, onDemandDatasetAccession)
+}
+func (tx *pgTx) GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, error) {
+	return tx.getOnDemandDatasetAccessionFromImageAccessions(ctx, tx.tx, imageAccessionHash)
 }
 func (tx *pgTx) GetOnDemandDatasetRemsMetadata(ctx context.Context, onDemandDatasetAccession string) (*metadata_models.RemsSet, error) {
 	return tx.getOnDemandDatasetRemsMetadata(ctx, tx.tx, onDemandDatasetAccession)
