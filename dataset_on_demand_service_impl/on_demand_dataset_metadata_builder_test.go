@@ -10,7 +10,7 @@ import (
 )
 
 func TestBuildOnDemandDataset(t *testing.T) {
-	tests := []struct {
+	for _, tc := range []struct {
 		name                 string
 		originDatasets       map[string]*models.OriginDataset
 		imageAccessions      map[string]map[string]struct{}
@@ -74,8 +74,7 @@ func TestBuildOnDemandDataset(t *testing.T) {
 				},
 			},
 		},
-	}
-	for _, tc := range tests {
+	} {
 		t.Run(tc.name, func(t *testing.T) {
 			onDemandDataset := buildOnDemandDataset(context.Background(), tc.originDatasets, tc.imageAccessions)
 

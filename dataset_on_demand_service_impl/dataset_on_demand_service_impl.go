@@ -59,7 +59,7 @@ func (d *dodServiceImpl) NewOriginDataset(ctx context.Context, c *connect.Reques
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 	if len(datasetFiles) == 0 {
-		slog.Warn("no dataset files found", "error", err, "dataset-accession", c.Msg.GetDatasetAccession())
+		slog.Warn("no dataset files found", "dataset-accession", c.Msg.GetDatasetAccession())
 
 		return nil, connect.NewError(connect.CodeNotFound, nil)
 	}
@@ -430,6 +430,7 @@ func hashImageAccessions(ids []string) string {
 	h := sha256.New()
 	for _, id := range sorted {
 		_, _ = h.Write([]byte(id))
+		_, _ = h.Write([]byte{0}) // separator
 	}
 
 	return hex.EncodeToString(h.Sum(nil))
