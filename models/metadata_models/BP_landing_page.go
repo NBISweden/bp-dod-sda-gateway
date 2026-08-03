@@ -10,10 +10,10 @@ type LandingPageSet struct {
 
 type LandingPage struct {
 	ObjectType
-	DatasetRef     Reference           `xml:"DATASET_REF"`
-	RemsAccessLink *string             `xml:"REMS_ACCESS_LINK"`
-	ObserverRef    []SampleImageFiles  `xml:"SAMPLE_IMAGE_FILES"`
-	Attributes     *NullableAttributes `xml:"ATTRIBUTES"`
+	DatasetRef       Reference           `xml:"DATASET_REF"`
+	RemsAccessLink   *string             `xml:"REMS_ACCESS_LINK"`
+	SampleImageFiles []SampleImageFiles  `xml:"SAMPLE_IMAGE_FILES"`
+	Attributes       *NullableAttributes `xml:"ATTRIBUTES"`
 }
 
 type SampleImageFiles struct {
