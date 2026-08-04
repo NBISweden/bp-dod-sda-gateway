@@ -2,6 +2,7 @@ package metadata_submitter_database
 
 import (
 	"context"
+	"database/sql"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -59,7 +60,9 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 		_ = rows.Close()
 	}()
 
+	var rowsFound bool
 	for rows.Next() {
+		rowsFound = true
 		var metadataSetEntryXmlContent []byte
 		var entryType string
 		if err := rows.Scan(&metadataSetEntryXmlContent, &entryType); err != nil {
@@ -156,5 +159,13 @@ func (db *metadataSubmitterPg) unmarshalFileToXml(ctx context.Context, file *ori
 		}
 	}
 
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if !rowsFound {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }

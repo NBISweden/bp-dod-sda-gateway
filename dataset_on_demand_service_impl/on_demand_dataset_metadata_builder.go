@@ -323,7 +323,7 @@ func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models
 				}
 			}
 
-			if len(observerAccessions) == 0 {
+			if len(observerAccessions) == 0 || originDataset.Observer == nil {
 				continue
 			}
 
