@@ -81,7 +81,7 @@ func GetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string
 	return db.GetOnDemandDatasetRemsMetadata(ctx, datasetAccession)
 }
 
-func IsOnDemandDatasetPublished(ctx context.Context, dodDatasetAccession string) (bool, error) {
+func IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error) {
 	return db.IsOnDemandDatasetReleased(ctx, dodDatasetAccession)
 }
 

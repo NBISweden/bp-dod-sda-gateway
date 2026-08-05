@@ -2,6 +2,7 @@ package on_demand_dataset_metadata_file_handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -27,6 +28,19 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
+type DodMetadataFileHandler interface {
+	RegisterOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error
+}
+
+var dmfh DodMetadataFileHandler
+
+func RegisterDodMetadataFileHandler(newDmfh DodMetadataFileHandler) {
+	dmfh = newDmfh
+}
+func RegisterOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error {
+	return dmfh.RegisterOnDemandDataset(ctx, dodDataset)
+}
+
 type dodMetadataFileHandler struct {
 	ctx context.Context
 
@@ -40,10 +54,12 @@ type dodMetadataFileHandler struct {
 	sync.Mutex
 }
 
-var dmfh *dodMetadataFileHandler
-
 func Init(ctx context.Context) error {
-	dmfh = &dodMetadataFileHandler{
+	if dmfh != nil {
+		return errors.New("dod metadata file handler has already been initialized")
+	}
+
+	newDmfh := &dodMetadataFileHandler{
 		ctx:        ctx,
 		httpClient: &http.Client{},
 	}
@@ -54,7 +70,7 @@ func Init(ctx context.Context) error {
 	tokenClaims := jwt.MapClaims{}
 	_, _, err := parser.ParseUnverified(inboxToken, tokenClaims)
 	if err != nil {
-		return fmt.Errorf("failed to parse(unverified) the inbox token: %w", err)
+		return fmt.Errorf("failed to parse the inbox token: %w", err)
 	}
 
 	tokenSubject, err := tokenClaims.GetSubject()
@@ -62,7 +78,7 @@ func Init(ctx context.Context) error {
 		return fmt.Errorf("failed to extract subject (sub) from inbox token: %w", err)
 	}
 
-	dmfh.uploadUser = tokenSubject
+	newDmfh.uploadUser = tokenSubject
 
 	pubKey, err := os.Open(filepath.Clean(c4ghPublicKeyFilePath))
 	if err != nil {
@@ -71,7 +87,7 @@ func Init(ctx context.Context) error {
 	defer func() {
 		_ = pubKey.Close()
 	}()
-	dmfh.c4ghPublicKey, err = keys.ReadPublicKey(pubKey)
+	newDmfh.c4ghPublicKey, err = keys.ReadPublicKey(pubKey)
 	if err != nil {
 		return fmt.Errorf("failed to read public key from the c4ghPublicKeyFilePath: %w", err)
 	}
@@ -97,7 +113,7 @@ func Init(ctx context.Context) error {
 	})
 
 	// Create an datasetCreationRequestHandler with the session and default options
-	dmfh.transferManagerClient = transfermanager.New(s3Client)
+	newDmfh.transferManagerClient = transfermanager.New(s3Client)
 
 	datasetsMetadataFiles, err := database.ListUnreleasedOnDemandDatasetMetadataFiles(ctx)
 	if err != nil {
@@ -105,13 +121,14 @@ func Init(ctx context.Context) error {
 	}
 
 	for datasetAccession, metadataFiles := range datasetsMetadataFiles {
-		go dmfh.monitorDatasetMetadataFiles(datasetAccession, metadataFiles)
+		go newDmfh.monitorDatasetMetadataFiles(datasetAccession, metadataFiles)
 	}
 
+	dmfh = newDmfh
 	return nil
 }
 
-func RegisterOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error {
+func (dmfh *dodMetadataFileHandler) RegisterOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error {
 	ctx, span := observability.Tracer().Start(ctx, "RegisterOnDemandDataset", trace.WithAttributes(attribute.String("accession", dodDataset.Accession)))
 	defer span.End()
 

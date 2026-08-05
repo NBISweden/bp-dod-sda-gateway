@@ -392,7 +392,7 @@ func (d *dodServiceImpl) GetOnDemandDatasetStatus(ctx context.Context, c *connec
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty dod dataset accession"))
 	}
 
-	onDemandDatasetReleased, err := database.IsOnDemandDatasetPublished(ctx, c.Msg.GetOnDemandDatasetAccession())
+	onDemandDatasetReleased, err := database.IsOnDemandDatasetReleased(ctx, c.Msg.GetOnDemandDatasetAccession())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, nil)
