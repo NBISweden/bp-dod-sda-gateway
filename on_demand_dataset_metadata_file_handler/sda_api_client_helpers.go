@@ -12,7 +12,6 @@ import (
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // fileInfo based on https://github.com/neicnordic/sensitive-data-archive/blob/main/sda/cmd/api/swagger_v1.yml#L505
@@ -24,7 +23,7 @@ type fileInfo struct {
 }
 
 func (dmfh *dodMetadataFileHandler) triggerFileIngest(ctx context.Context, datasetAccession string, metadataFileType metadata_models.MetadataFileType) error {
-	ctx, span := observability.Tracer().Start(ctx, "triggerFileIngest", trace.WithAttributes(attribute.String("sda-api-url", sdaAPIUrl), attribute.String("metadata-file-type", metadataFileType.String())))
+	ctx, span := observability.StartSpan(ctx, "triggerFileIngest", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("metadata-file-type", metadataFileType.String()))
 	defer span.End()
 
 	endpoint, err := url.JoinPath(sdaAPIUrl, "file", "ingest")
@@ -70,7 +69,7 @@ func (dmfh *dodMetadataFileHandler) triggerFileIngest(ctx context.Context, datas
 }
 
 func (dmfh *dodMetadataFileHandler) triggerFileAccession(ctx context.Context, fileID, fileAccession string) error {
-	ctx, span := observability.Tracer().Start(ctx, "triggerFileAccession", trace.WithAttributes(attribute.String("sda-api-url", sdaAPIUrl)))
+	ctx, span := observability.StartSpan(ctx, "triggerFileAccession", attribute.String("sda-api-url", sdaAPIUrl))
 	defer span.End()
 
 	endpoint, err := url.JoinPath(sdaAPIUrl, "file", "accession")
@@ -110,7 +109,7 @@ func (dmfh *dodMetadataFileHandler) triggerFileAccession(ctx context.Context, fi
 }
 
 func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string, imageAccessionFileNames map[string]map[string]string) error {
-	ctx, span := observability.Tracer().Start(ctx, "triggerDatasetCreation", trace.WithAttributes(attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession)))
+	ctx, span := observability.StartSpan(ctx, "triggerDatasetCreation", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession))
 	defer span.End()
 
 	endpoint, err := url.JoinPath(sdaAPIUrl, "dataset", "create")
@@ -179,7 +178,7 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, 
 }
 
 func (dmfh *dodMetadataFileHandler) triggerDatasetRelease(ctx context.Context, datasetAccession string) error {
-	ctx, span := observability.Tracer().Start(ctx, "triggerDatasetRelease", trace.WithAttributes(attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession)))
+	ctx, span := observability.StartSpan(ctx, "triggerDatasetRelease", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession))
 	defer span.End()
 
 	endpoint, err := url.JoinPath(sdaAPIUrl, "dataset", "release", datasetAccession)
@@ -212,7 +211,7 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetRelease(ctx context.Context, d
 }
 
 func (dmfh *dodMetadataFileHandler) listMetadataFiles(ctx context.Context, datasetAccession string) ([]*fileInfo, error) {
-	ctx, span := observability.Tracer().Start(ctx, "listMetadataFiles", trace.WithAttributes(attribute.String("sda-api-url", sdaAPIUrl)))
+	ctx, span := observability.StartSpan(ctx, "listMetadataFiles", attribute.String("sda-api-url", sdaAPIUrl))
 	defer span.End()
 
 	endpoint, err := url.JoinPath(sdaAPIUrl, "files")

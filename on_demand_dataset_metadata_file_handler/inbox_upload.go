@@ -10,11 +10,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/neicnordic/crypt4gh/streaming"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 func (dmfh *dodMetadataFileHandler) marshalEncryptAndUploadFile(ctx context.Context, filePath string, metadata any) error {
-	ctx, span := observability.Tracer().Start(ctx, "marshalEncryptAndUploadFile", trace.WithAttributes(attribute.String("file-path", filePath)))
+	ctx, span := observability.StartSpan(ctx, "marshalEncryptAndUploadFile", attribute.String("file-path", filePath))
 	defer span.End()
 
 	reader, writer := io.Pipe()

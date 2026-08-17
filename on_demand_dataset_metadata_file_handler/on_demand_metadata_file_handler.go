@@ -26,7 +26,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -135,82 +134,82 @@ func Init(ctx context.Context) error {
 }
 
 func (dmfh *dodMetadataFileHandler) RegisterOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error {
-	ctx, span := observability.Tracer().Start(ctx, "RegisterOnDemandDataset", trace.WithAttributes(attribute.String("accession", dodDataset.Accession)))
+	ctx, span := observability.StartSpan(ctx, "RegisterOnDemandDataset", attribute.String("accession", dodDataset.Accession))
 	defer span.End()
 
 	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "dataset.xml"), dodDataset.DatasetMetadata.MetadataSet); err != nil {
-		slog.Warn("failed to upload dataset xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to upload dataset xml", err)
 
 		return fmt.Errorf("failed to upload dataset xml: %w", err)
 	}
 	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "image.xml"), dodDataset.ImageMetadata.MetadataSet); err != nil {
-		slog.Warn("failed to upload image xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to upload image xml", err)
 
 		return fmt.Errorf("failed to upload image xml: %w", err)
 	}
 	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "observation.xml"), dodDataset.ObservationMetadata.MetadataSet); err != nil {
-		slog.Warn("failed to upload observation xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to upload observation xml", err)
 
 		return fmt.Errorf("failed to upload observation xml: %w", err)
 	}
 	if dodDataset.ObserverMetadata != nil {
 		if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "observer.xml"), dodDataset.ObserverMetadata.MetadataSet); err != nil {
-			slog.Warn("failed to upload observer xml", "error", err, "accession", dodDataset.Accession)
+			span.Error("failed to upload observer xml", err)
 
 			return fmt.Errorf("failed to upload observer xml: %w", err)
 		}
 	}
 	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "policy.xml"), dodDataset.PolicyMetadata.MetadataSet); err != nil {
-		slog.Warn("failed to upload policy xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to upload policy xml", err)
 
 		return fmt.Errorf("failed to upload policy xml: %w", err)
 	}
 	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "sample.xml"), dodDataset.SampleMetadata.MetadataSet); err != nil {
-		slog.Warn("failed to upload sample xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to upload sample xml", err)
 
 		return fmt.Errorf("failed to upload sample xml: %w", err)
 	}
 
 	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "staining.xml"), dodDataset.StainingMetadata.MetadataSet); err != nil {
-		slog.Warn("failed to upload staining xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to upload staining xml", err)
 
 		return fmt.Errorf("failed to upload staining xml: %w", err)
 	}
 
 	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.DatasetMetadata.MetadataFileType()); err != nil {
-		slog.Warn("failed to trigger ingestion for dataset xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to trigger ingestion for dataset xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for dataset xml: %w", err)
 	}
 	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.ImageMetadata.MetadataFileType()); err != nil {
-		slog.Warn("failed to trigger ingestion for image xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to trigger ingestion for image xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for image xml: %w", err)
 	}
 	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.ObservationMetadata.MetadataFileType()); err != nil {
-		slog.Warn("failed to trigger ingestion for observation xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to trigger ingestion for observation xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for observation xml: %w", err)
 	}
 	if dodDataset.ObserverMetadata != nil {
 		if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.ObserverMetadata.MetadataFileType()); err != nil {
-			slog.Warn("failed to trigger ingestion for observer xml", "error", err, "accession", dodDataset.Accession)
+			span.Error("failed to trigger ingestion for observer xml", err)
 
 			return fmt.Errorf("failed to trigger ingestion for observer xml: %w", err)
 		}
 	}
 	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.PolicyMetadata.MetadataFileType()); err != nil {
-		slog.Warn("failed to trigger ingestion for policy xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to trigger ingestion for policy xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for policy xml: %w", err)
 	}
 	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.SampleMetadata.MetadataFileType()); err != nil {
-		slog.Warn("failed to trigger ingestion for sample xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to trigger ingestion for sample xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for sample xml: %w", err)
 	}
 	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.StainingMetadata.MetadataFileType()); err != nil {
-		slog.Warn("failed to trigger ingestion for staining xml", "error", err, "accession", dodDataset.Accession)
+		span.Error("failed to trigger ingestion for staining xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for staining xml: %w", err)
 	}
@@ -261,7 +260,7 @@ func (dmfh *dodMetadataFileHandler) monitorDatasetMetadataFiles(datasetAccession
 }
 
 func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) (bool, error) {
-	ctx, span := observability.Tracer().Start(dmfh.ctx, "pollAndProcess", trace.WithAttributes(attribute.String("accession", datasetAccession)))
+	ctx, span := observability.StartSpan(dmfh.ctx, "pollAndProcess", attribute.String("accession", datasetAccession))
 	defer span.End()
 
 	// verified -> do accession
@@ -277,10 +276,10 @@ func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, data
 		switch metadataFile.Status {
 		// Based on https://github.com/neicnordic/sensitive-data-archive/blob/main/postgresql/initdb.d/01_main.sql#L69
 		case "uploaded":
-			slog.Debug("metadata file still in uploaded status", "sda-id", metadataFile.FileId)
+			span.Debug("metadata file still in uploaded status", slog.String("sda-id", metadataFile.FileId))
 			allReady = false
 		case "registered", "backed up", "downloaded", "error", "disabled", "enabled":
-			slog.Warn("unexpected metadata file status", "status", metadataFile.Status, "sda-id", metadataFile.FileId)
+			span.Warn("unexpected metadata file status", slog.String("status", metadataFile.Status), slog.String("sda-id", metadataFile.FileId))
 			allReady = false
 		case "submitted", "ingested", "archived":
 			// Keep waiting until "verified"
@@ -306,7 +305,7 @@ func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, data
 			}
 
 			if fileAccession == "" {
-				slog.Warn("missing accession for metadata file", "inbox-path", metadataFile.InboxPath, "sda-id", metadataFile.FileId)
+				span.Warn("missing accession for metadata file", slog.String("inbox-path", metadataFile.InboxPath), slog.String("sda-id", metadataFile.FileId))
 				allReady = false
 
 				continue
@@ -319,7 +318,7 @@ func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, data
 		case "ready":
 
 		default:
-			slog.Warn("unknown metadata file status", "status", metadataFile.Status)
+			span.Warn("unknown metadata file status", slog.String("status", metadataFile.Status))
 			allReady = false
 		}
 	}

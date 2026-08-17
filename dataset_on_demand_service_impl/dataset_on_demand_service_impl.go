@@ -22,7 +22,6 @@ import (
 	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader"
 	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type dodServiceImpl struct {
@@ -43,7 +42,7 @@ func NewDodServiceImpl(options ...func(*dodServiceImpl)) (dodserviceconnect.Data
 }
 
 func (d *dodServiceImpl) NewOriginDataset(ctx context.Context, c *connect.Request[dodservice.NewOriginDatasetRequest]) (*connect.Response[dodservice.NewOriginDatasetResponse], error) {
-	ctx, span := observability.Tracer().Start(ctx, "NewOriginDataset", trace.WithAttributes(attribute.String("dataset-accession", c.Msg.GetDatasetAccession())))
+	ctx, span := observability.StartSpan(ctx, "NewOriginDataset", attribute.String("dataset-accession", c.Msg.GetDatasetAccession()))
 	defer span.End()
 
 	if c.Msg.GetDatasetAccession() == "" {
@@ -54,12 +53,12 @@ func (d *dodServiceImpl) NewOriginDataset(ctx context.Context, c *connect.Reques
 
 	datasetFiles, err := d.originDatasetFileLoader.ListDatasetFiles(ctx, c.Msg.GetDatasetAccession())
 	if err != nil {
-		slog.Warn("failed list dataset files", "error", err)
+		span.Error("failed list dataset files", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 	if len(datasetFiles) == 0 {
-		slog.Warn("no dataset files found", "dataset-accession", c.Msg.GetDatasetAccession())
+		span.Error("no dataset files found", nil)
 
 		return nil, connect.NewError(connect.CodeNotFound, nil)
 	}
@@ -110,7 +109,7 @@ func (d *dodServiceImpl) NewOriginDataset(ctx context.Context, c *connect.Reques
 			fileAccessions[file.Path] = file.Accession
 		}
 		if err != nil {
-			slog.Warn("failed UnmarshalFileToXml file", "error", err, "dataset-accession", originDataset.Accession, "filepath", file.Path)
+			span.Error("failed UnmarshalFileToXml file", err, slog.String("filepath", file.Path))
 
 			return nil, connect.NewError(connect.CodeInternal, nil)
 		}
@@ -118,76 +117,83 @@ func (d *dodServiceImpl) NewOriginDataset(ctx context.Context, c *connect.Reques
 
 	originDataset.RemsWorkflowID, originDataset.RemsOrganisationID, err = d.originDatasetFileLoader.GetRemsWorkFlowIDAndOrganisationID(ctx, c.Msg.GetDatasetAccession())
 	if err != nil {
-		slog.Warn("failed get rems xml", "error", err, "dataset-accession", originDataset.Accession)
+		span.Error("failed get rems xml", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
 	if originDataset.RemsWorkflowID == -1 || originDataset.RemsOrganisationID == "" {
-		slog.Warn("rems.xml not found", "dataset-accession", originDataset.Accession)
+		err := errors.New("rems.xml not found")
+		span.Error("rems.xml not found", err)
 
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("rems.xml not found"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 
 	// Check that required xml files are present
 	if originDataset.Dataset == nil {
-		slog.Warn("dataset.xml not found", "dataset-accession", originDataset.Accession)
+		err := errors.New("dataset.xml not found")
+		span.Error("dataset.xml not found", err)
 
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("dataset.xml not found"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	if originDataset.Image == nil {
-		slog.Warn("image.xml not found", "dataset-accession", originDataset.Accession)
+		err := errors.New("image.xml not found")
+		span.Error("image.xml not found", err)
 
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("image.xml not found"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	if originDataset.Observation == nil {
-		slog.Warn("observation.xml not found", "dataset-accession", originDataset.Accession)
+		err := errors.New("observation.xml not found")
+		span.Error("observation.xml not found", err)
 
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("observation.xml not found"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	if originDataset.Policy == nil {
-		slog.Warn("policy.xml not found", "dataset-accession", originDataset.Accession)
+		err := errors.New("policy.xml not found")
+		span.Error("policy.xml not found", err)
 
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("policy.xml not found"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	if originDataset.Sample == nil {
-		slog.Warn("sample.xml not found", "dataset-accession", originDataset.Accession)
+		err := errors.New("sample.xml not found")
+		span.Error("sample.xml not found", err)
 
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("sample.xml not found"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	if originDataset.Staining == nil {
-		slog.Warn("staining.xml not found", "dataset-accession", originDataset.Accession)
+		err := errors.New("staining.xml not found")
+		span.Error("staining.xml not found", err)
 
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("staining.xml not found"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 
 	tx, err := database.BeginTransaction(ctx)
 	if err != nil {
-		slog.Warn("failed to begin database transaction", "error", err)
+		span.Error("failed to begin database transaction", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 	defer func() {
 		if err := tx.Rollback(); err != nil {
-			slog.Warn("failed to rollback database transaction", "error", err)
+			span.Error("failed to rollback database transaction", err)
 		}
 	}()
 
 	if err := tx.InsertOriginDataset(ctx, originDataset); err != nil {
-		slog.Warn("failed to insert dataset to database", "error", err, "dataset-accession", originDataset.Accession)
+		span.Error("failed to insert dataset to database", err, slog.String("dataset-accession", originDataset.Accession))
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
 	for _, image := range originDataset.Image.Images {
 		if image.Accession == "" {
-			slog.Warn("image does not have an accession id", "error", err, "dataset-accession", originDataset.Accession, "image-accession", image.Accession)
+			span.Error("image does not have an accession id", errors.New("image does not have an accession id"), slog.String("image-alias", image.Alias))
 
 			return nil, connect.NewError(connect.CodeFailedPrecondition, nil)
 		}
 
 		if err := tx.InsertDatasetImage(ctx, originDataset.Accession, image.Accession); err != nil {
-			slog.Warn("failed to insert dataset image to database", "error", err, "dataset-accession", originDataset.Accession, "image-accession", image.Accession)
+			span.Error("failed to insert dataset image to database", err, slog.String("image-accession", image.Accession))
 
 			return nil, connect.NewError(connect.CodeInternal, nil)
 		}
@@ -198,7 +204,7 @@ func (d *dodServiceImpl) NewOriginDataset(ctx context.Context, c *connect.Reques
 					delete(fileAccessions, downloadPath)
 					found = true
 					if err := tx.InsertImageFile(ctx, originDataset.Accession, image.Accession, fileAccession, filepath.Base(file.Filename)); err != nil {
-						slog.Warn("failed to insert image file to database", "error", err, "dataset-accession", originDataset.Accession, "image-accession", image.Accession, "file-accession", fileAccession)
+						span.Error("failed to insert image file to database", err, slog.String("image-accession", image.Accession), slog.String("file-accession", fileAccession))
 
 						return nil, connect.NewError(connect.CodeInternal, nil)
 					}
@@ -213,7 +219,7 @@ func (d *dodServiceImpl) NewOriginDataset(ctx context.Context, c *connect.Reques
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Warn("failed to commit database transaction", "error", err)
+		span.Error("failed to commit database transaction", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
@@ -222,7 +228,7 @@ func (d *dodServiceImpl) NewOriginDataset(ctx context.Context, c *connect.Reques
 }
 
 func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Request[dodservice.RequestDatasetCreationRequest]) (*connect.Response[dodservice.RequestDatasetCreationResponse], error) {
-	ctx, span := observability.Tracer().Start(ctx, "RequestDatasetCreation")
+	ctx, span := observability.StartSpan(ctx, "RequestDatasetCreation", attribute.String("user", c.Msg.GetUser()))
 	defer span.End()
 
 	if len(c.Msg.GetImageAccessions()) == 0 {
@@ -238,7 +244,7 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 
 	existingOnDemandDatasetAccession, err := database.GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx, imageAccessionHash)
 	if err != nil {
-		slog.Warn("failed to check for existing on demand dataset image accessions hash", "error", err)
+		span.Error("failed to check for existing on demand dataset image accessions hash", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
@@ -258,27 +264,27 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 
 	tx, err := database.BeginTransaction(ctx)
 	if err != nil {
-		slog.Warn("failed to begin database transaction", "error", err)
+		span.Error("failed to begin database transaction", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
 	defer func() {
 		if err := tx.Rollback(); err != nil {
-			slog.Warn("failed to rollback database transaction", "error", err)
+			span.Error("failed to rollback database transaction", err)
 		}
 	}()
 
 	for _, imageAccession := range c.Msg.GetImageAccessions() {
 		originDatasetAccession, err := tx.GetOriginDatasetAccessionFromImageAccession(ctx, imageAccession)
 		if err != nil {
-			slog.Warn("failed to get origin dataset accession from image accession", "error", err, "image-accession", imageAccession)
+			span.Error("failed to get origin dataset accession from image accession", err, slog.String("image-accession", imageAccession))
 
 			return nil, connect.NewError(connect.CodeInternal, nil)
 		}
 
 		if originDatasetAccession == "" {
-			slog.Info("no dataset found from image accession", "image-accession", imageAccession)
+			span.Warn("no dataset found from image accession", slog.String("image-accession", imageAccession))
 
 			return nil, connect.NewError(connect.CodeNotFound, nil)
 		}
@@ -289,7 +295,7 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 		}
 
 		if _, ok := originDatasetImages[originDatasetAccession][imageAccession]; ok {
-			slog.Info("user requested to combine identical image accessions", "image-accession", imageAccession)
+			span.Info("user requested to combine identical image accessions", slog.String("image-accession", imageAccession))
 
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("duplicate image accession requested"))
 		}
@@ -306,13 +312,13 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 	for originDatasetAccession := range originDatasetImages {
 		originDataset, err := tx.GetOriginDataset(ctx, originDatasetAccession)
 		if err != nil {
-			slog.Warn("failed to get origin dataset", "error", err, "accession", originDatasetAccession)
+			span.Error("failed to get origin dataset", err, slog.String("accession", originDatasetAccession))
 
 			return nil, connect.NewError(connect.CodeInternal, nil)
 		}
 
 		if originDataset == nil {
-			slog.Error("failed to find origin dataset", "accession", originDatasetAccession)
+			span.Error("failed to find origin dataset", errors.New("failed to find origin dataset"), slog.String("accession", originDatasetAccession))
 
 			return nil, connect.NewError(connect.CodeInternal, nil)
 		}
@@ -333,13 +339,13 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 		}
 
 		if ensureSameWorkflowID != originDataset.RemsWorkflowID {
-			slog.Info("user tried to combine datasets with different workflows id")
+			span.Info("user tried to combine datasets with different workflows id")
 
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("can not combine images from datasets originating from different DaCs"))
 		}
 
 		if !ensureSameTou.Equal(originDataset.Policy) {
-			slog.Info("user tried to combine datasets with different terms of use")
+			span.Info("user tried to combine datasets with different terms of use")
 
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("can not combine images from datasets with different terms of use"))
 		}
@@ -347,9 +353,10 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 
 	onDemandDataset := buildOnDemandDataset(ctx, originDatasets, originDatasetImages)
 	onDemandDataset.RequestedByUser = c.Msg.GetUser()
+	span.SetAttributes(attribute.String("on-demand-dataset-accession", onDemandDataset.Accession))
 
 	if err := tx.InsertOnDemandDataset(ctx, onDemandDataset, imageAccessionHash); err != nil {
-		slog.Warn("failed to insert on demand dataset", "error", err)
+		span.Error("failed to insert on demand dataset", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
@@ -357,7 +364,7 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 	for originAccession, imageAccessions := range originDatasetImages {
 		for imageAccession := range imageAccessions {
 			if err := tx.InsertOnDemandDatasetImage(ctx, onDemandDataset.Accession, imageAccession); err != nil {
-				slog.Warn("failed to insert on demand dataset image", "error", err, "origin-accession", originAccession, "image-accession", imageAccession)
+				span.Error("failed to insert on demand dataset image", err, slog.String("origin-accession", originAccession), slog.String("image-accession", imageAccession))
 
 				return nil, connect.NewError(connect.CodeInternal, nil)
 			}
@@ -365,19 +372,19 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 	}
 
 	if err := on_demand_dataset_metadata_file_handler.RegisterOnDemandDataset(ctx, onDemandDataset); err != nil {
-		slog.Warn("failed to register on demand dataset", "error", err)
+		span.Error("failed to register on demand dataset", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
 	// For now, we risk failing to commit after having uploaded and triggered ingestion for the metadata files(done by RegisterOnDemandDataset), but should be ok for now
 	if err := tx.Commit(); err != nil {
-		slog.Warn("failed to commit database transaction", "error", err)
+		span.Error("failed to commit database transaction", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
-	slog.Info("on demand dataset registered successfully", "accession", onDemandDataset.Accession, "user", c.Msg.GetUser())
+	span.Info("on demand dataset registered successfully")
 
 	return connect.NewResponse(&dodservice.RequestDatasetCreationResponse{
 		OnDemandDatasetAccession: onDemandDataset.Accession,
@@ -385,7 +392,7 @@ func (d *dodServiceImpl) RequestDatasetCreation(ctx context.Context, c *connect.
 }
 
 func (d *dodServiceImpl) GetOnDemandDatasetStatus(ctx context.Context, c *connect.Request[dodservice.GetOnDemandDatasetStatusRequest]) (*connect.Response[dodservice.GetOnDemandDatasetStatusResponse], error) {
-	ctx, span := observability.Tracer().Start(ctx, "GetOnDemandDatasetStatus", trace.WithAttributes(attribute.String("accession", c.Msg.GetOnDemandDatasetAccession())))
+	ctx, span := observability.StartSpan(ctx, "GetOnDemandDatasetStatus", attribute.String("accession", c.Msg.GetOnDemandDatasetAccession()))
 	defer span.End()
 
 	if c.Msg.GetOnDemandDatasetAccession() == "" {
@@ -397,7 +404,7 @@ func (d *dodServiceImpl) GetOnDemandDatasetStatus(ctx context.Context, c *connec
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, nil)
 		}
-		slog.Warn("failed to check if on demand dataset is publish", "error", err, "accession", c.Msg.GetOnDemandDatasetAccession())
+		span.Error("failed to check if on demand dataset is released", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}

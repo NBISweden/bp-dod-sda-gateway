@@ -64,7 +64,7 @@ func (dmfh *dodMetadataFileHandler) doRemsRequest(_ context.Context, req *http.R
 	return body, nil
 }
 func (dmfh *dodMetadataFileHandler) createRemsResource(ctx context.Context, remsMetadata *metadata_models.RemsSet, datasetAccession string) (int, error) {
-	ctx, span := observability.Tracer().Start(ctx, "createRemsResource")
+	ctx, span := observability.StartSpan(ctx, "createRemsResource")
 	defer span.End()
 
 	// check if rems resource already exists first
@@ -145,7 +145,7 @@ func (dmfh *dodMetadataFileHandler) createRemsResource(ctx context.Context, rems
 }
 
 func (dmfh *dodMetadataFileHandler) createRemsCatalogueItem(ctx context.Context, remsMetadata *metadata_models.RemsSet, datasetAccession string, remsResourceID int) error {
-	ctx, span := observability.Tracer().Start(ctx, "createRemsCatalogueItem")
+	ctx, span := observability.StartSpan(ctx, "createRemsCatalogueItem")
 	defer span.End()
 
 	catalogueItemsGetEndpoint, err := url.JoinPath(remsUrl, "api", "catalogue-items")
