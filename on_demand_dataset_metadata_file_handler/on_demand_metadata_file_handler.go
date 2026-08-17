@@ -23,6 +23,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/neicnordic/crypt4gh/keys"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -60,8 +62,10 @@ func Init(ctx context.Context) error {
 	}
 
 	newDmfh := &dodMetadataFileHandler{
-		ctx:        ctx,
-		httpClient: &http.Client{},
+		ctx: ctx,
+		httpClient: &http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
 	}
 
 	// Parse the user from the inbox.Token and extract the subject, as this is needed to trigger ingestion and dataset creation
@@ -110,6 +114,7 @@ func Init(ctx context.Context) error {
 		o.EndpointOptions.DisableHTTPS = inboxDisableHTTPS
 		o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
 		o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
+		otelaws.AppendMiddlewares(&o.APIOptions)
 	})
 
 	// Create an datasetCreationRequestHandler with the session and default options
