@@ -125,6 +125,7 @@ func Init(ctx context.Context) error {
 	}
 
 	dmfh = newDmfh
+
 	return nil
 }
 

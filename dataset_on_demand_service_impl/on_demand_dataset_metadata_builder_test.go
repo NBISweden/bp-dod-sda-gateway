@@ -79,7 +79,7 @@ func TestBuildOnDemandDataset(t *testing.T) {
 			onDemandDataset := buildOnDemandDataset(context.Background(), tc.originDatasets, tc.imageAccessions)
 
 			if len(onDemandDataset.DatasetMetadata.MetadataSet.Dataset) != 1 {
-				t.Errorf("OnDemandDataset dataset metadata not 1")
+				t.Error("OnDemandDataset dataset metadata not 1")
 				t.FailNow()
 			}
 			var expectedImageCount int
@@ -89,7 +89,6 @@ func TestBuildOnDemandDataset(t *testing.T) {
 					var found bool
 
 					for _, imageRef := range onDemandDataset.DatasetMetadata.MetadataSet.Dataset[0].ImageRef {
-
 						if imageAccession != imageRef.Accession {
 							continue
 						}
@@ -112,6 +111,7 @@ func TestBuildOnDemandDataset(t *testing.T) {
 						if slideAccession == "" {
 							t.Errorf("OnDemandDataset image metadata does not contain an expected slide reference for image with accession: %s", imageAccession)
 							t.Fail()
+
 							break
 						}
 
@@ -135,12 +135,14 @@ func TestBuildOnDemandDataset(t *testing.T) {
 						if stainingAccession == "" {
 							t.Errorf("OnDemandDataset sample metadata does not contain an expected stainging for slide with accession: %s", slideAccession)
 							t.Fail()
+
 							break
 						}
 
 						if blockAccession == "" {
 							t.Errorf("OnDemandDataset sample metadata does not contain an expected block for slide with accession: %s", slideAccession)
 							t.Fail()
+
 							break
 						}
 
@@ -157,6 +159,7 @@ func TestBuildOnDemandDataset(t *testing.T) {
 						if !stainingFound {
 							t.Errorf("OnDemandDataset staining metadata does not contain an expected staining with accession: %s", stainingAccession)
 							t.Fail()
+
 							break
 						}
 
@@ -177,6 +180,7 @@ func TestBuildOnDemandDataset(t *testing.T) {
 						if len(specimenRefs) == 0 {
 							t.Errorf("OnDemandDataset sample metadata does not contain any expected specimen refs with block accession: %s", blockAccession)
 							t.Fail()
+
 							break
 						}
 
@@ -247,7 +251,6 @@ func TestBuildOnDemandDataset(t *testing.T) {
 						}
 
 						break
-
 					}
 
 					if !found {
@@ -259,13 +262,11 @@ func TestBuildOnDemandDataset(t *testing.T) {
 
 			assert.Equal(t, len(onDemandDataset.DatasetMetadata.MetadataSet.Dataset[0].ImageRef), expectedImageCount)
 			assert.Equal(t, len(onDemandDataset.ImageMetadata.MetadataSet.Images), expectedImageCount)
-
 		})
 	}
 }
 
 func generateTestOriginDataset(datasetName string) *models.OriginDataset {
-
 	attributes := metadata_models.NullableAttributes{
 		Value: &metadata_models.Attributes{
 			StringAttributes: []metadata_models.StringAttribute{

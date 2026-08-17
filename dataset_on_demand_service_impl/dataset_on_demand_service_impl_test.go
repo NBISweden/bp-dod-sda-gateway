@@ -23,6 +23,7 @@ type mockDodMetadataFileHandler struct {
 
 func (m *mockDodMetadataFileHandler) RegisterOnDemandDataset(_ context.Context, dodDataset *models.OnDemandDataset) error {
 	args := m.Called(dodDataset.Accession)
+
 	return args.Error(0)
 }
 
@@ -35,96 +36,115 @@ type mockDatabase struct {
 
 func (m *mockDatabase) Commit() error {
 	args := m.Called()
+
 	return args.Error(0)
 }
 
 func (m *mockDatabase) Rollback() error {
 	args := m.Called()
+
 	return args.Error(0)
 }
 
 func (m *mockDatabase) BeginTransaction(_ context.Context) (database.Transaction, error) {
 	args := m.Called()
+
 	return args.Get(0).(*mockDatabase), args.Error(1)
 }
 
 func (m *mockDatabase) Close() error {
 	args := m.Called()
+
 	return args.Error(0)
 }
 
 func (m *mockDatabase) SchemaVersion() (uint, error) {
 	args := m.Called()
+
 	return args.Get(0).(uint), args.Error(1)
 }
 
 func (m *mockDatabase) Ping(ctx context.Context) error {
 	args := m.Called()
+
 	return args.Error(0)
 }
 
 func (m *mockDatabase) GetOriginDataset(_ context.Context, accession string) (*models.OriginDataset, error) {
 	args := m.Called(accession)
+
 	return args.Get(0).(*models.OriginDataset), args.Error(1)
 }
 
 func (m *mockDatabase) GetOriginDatasetAccessionFromImageAccession(_ context.Context, imageAccession string) (string, error) {
 	args := m.Called(imageAccession)
+
 	return args.String(0), args.Error(1)
 }
 
 func (m *mockDatabase) InsertOriginDataset(_ context.Context, originDataset *models.OriginDataset) error {
 	args := m.Called(originDataset.Accession, originDataset.RemsWorkflowID, originDataset.RemsOrganisationID)
+
 	return args.Error(0)
 }
 
 func (m *mockDatabase) InsertOnDemandDataset(_ context.Context, onDemandDataset *models.OnDemandDataset, imageAccessionHash string) error {
 	args := m.Called(onDemandDataset.Accession, imageAccessionHash)
+
 	return args.Error(0)
 }
 
 func (m *mockDatabase) InsertOnDemandDatasetImage(_ context.Context, onDemandDatasetAccession, imageAccession string) error {
 	args := m.Called(onDemandDatasetAccession, imageAccession)
+
 	return args.Error(0)
 }
 
 func (m *mockDatabase) InsertDatasetImage(_ context.Context, datasetAccession, imageAccession string) error {
 	args := m.Called(datasetAccession, imageAccession)
+
 	return args.Error(0)
 }
 
 func (m *mockDatabase) InsertImageFile(_ context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error {
 	args := m.Called(datasetAccession, imageAccession, fileAccession, baseFileName)
+
 	return args.Error(0)
 }
 
 func (m *mockDatabase) ListUnreleasedOnDemandDatasetMetadataFiles(_ context.Context) (map[string]map[metadata_models.MetadataFileType]string, error) {
 	args := m.Called()
+
 	return args.Get(0).(map[string]map[metadata_models.MetadataFileType]string), args.Error(1)
 }
 
 func (m *mockDatabase) ListOnDemandDatasetImageFiles(_ context.Context, datasetAccession string) (map[string]map[string]string, error) {
 	args := m.Called(datasetAccession)
+
 	return args.Get(0).(map[string]map[string]string), args.Error(1)
 }
 
 func (m *mockDatabase) GetOnDemandDatasetRemsMetadata(_ context.Context, datasetAccession string) (*metadata_models.RemsSet, error) {
 	args := m.Called(datasetAccession)
+
 	return args.Get(0).(*metadata_models.RemsSet), args.Error(1)
 }
 
 func (m *mockDatabase) GetOnDemandDatasetAccessionFromImageAccessionsHash(_ context.Context, imageAccessionHash string) (string, error) {
 	args := m.Called(imageAccessionHash)
+
 	return args.String(0), args.Error(1)
 }
 
 func (m *mockDatabase) IsOnDemandDatasetReleased(_ context.Context, dodDatasetAccession string) (bool, error) {
 	args := m.Called(dodDatasetAccession)
+
 	return args.Bool(0), args.Error(1)
 }
 
 func (m *mockDatabase) SetOnDemandDatasetReleased(_ context.Context, datasetAccession string) error {
 	args := m.Called(datasetAccession)
+
 	return args.Error(0)
 }
 
@@ -159,26 +179,29 @@ func (m *mockOriginDatasetLoader) UnmarshalFileToXml(_ context.Context, file *or
 
 func (m *mockOriginDatasetLoader) ListDatasetFiles(_ context.Context, datasetAccession string) ([]*origin_dataset_file_loader.FileInfo, error) {
 	args := m.Called(datasetAccession)
+
 	return args.Get(0).([]*origin_dataset_file_loader.FileInfo), args.Error(1)
 }
 
 func (m *mockOriginDatasetLoader) GetRemsWorkFlowIDAndOrganisationID(_ context.Context, datasetAccession string) (int, string, error) {
 	args := m.Called(datasetAccession)
+
 	return args.Int(0), args.String(1), args.Error(2)
 }
 
 func (m *mockOriginDatasetLoader) Ping(_ context.Context) error {
 	args := m.Called()
+
 	return args.Error(0)
 }
 
 func (m *mockOriginDatasetLoader) Close() error {
 	args := m.Called()
+
 	return args.Error(0)
 }
 
 func TestNewOriginDataset(t *testing.T) {
-
 	for _, tc := range []struct {
 		name                   string
 		originDatasetAccession string
@@ -518,6 +541,7 @@ func TestRequestDatasetCreation(t *testing.T) {
 			mockDodMetadataFileHandlerOn: func() *mockDodMetadataFileHandler {
 				mockDmfh := new(mockDodMetadataFileHandler)
 				mockDmfh.On("RegisterOnDemandDataset", mock.Anything).Return(nil)
+
 				return mockDmfh
 			},
 			mockDodMetadataFileHandlerAssert: func(t *testing.T, mockDmfh *mockDodMetadataFileHandler) {
@@ -1287,6 +1311,7 @@ func TestGetOnDemandDatasetStatus(t *testing.T) {
 			mockDatabaseOn: func() *mockDatabase {
 				mockDB := new(mockDatabase)
 				mockDB.On("IsOnDemandDatasetReleased", "not_found").Return(false, sql.ErrNoRows)
+
 				return mockDB
 			},
 			mockDatabaseAssert: func(t *testing.T, mockDB *mockDatabase) {
@@ -1300,6 +1325,7 @@ func TestGetOnDemandDatasetStatus(t *testing.T) {
 			mockDatabaseOn: func() *mockDatabase {
 				mockDB := new(mockDatabase)
 				mockDB.On("IsOnDemandDatasetReleased", "db_error").Return(false, errors.New("db error"))
+
 				return mockDB
 			},
 			mockDatabaseAssert: func(t *testing.T, mockDB *mockDatabase) {
@@ -1313,6 +1339,7 @@ func TestGetOnDemandDatasetStatus(t *testing.T) {
 			mockDatabaseOn: func() *mockDatabase {
 				mockDB := new(mockDatabase)
 				mockDB.On("IsOnDemandDatasetReleased", "found_and_released").Return(true, nil)
+
 				return mockDB
 			},
 			mockDatabaseAssert: func(t *testing.T, mockDB *mockDatabase) {
@@ -1328,6 +1355,7 @@ func TestGetOnDemandDatasetStatus(t *testing.T) {
 			mockDatabaseOn: func() *mockDatabase {
 				mockDB := new(mockDatabase)
 				mockDB.On("IsOnDemandDatasetReleased", "found_and_pending").Return(false, nil)
+
 				return mockDB
 			},
 			mockDatabaseAssert: func(t *testing.T, mockDB *mockDatabase) {
