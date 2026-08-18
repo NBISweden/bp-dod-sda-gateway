@@ -12,11 +12,15 @@ type LandingPage struct {
 	ObjectType
 	DatasetRef       Reference           `xml:"DATASET_REF"`
 	RemsAccessLink   *string             `xml:"REMS_ACCESS_LINK"`
-	SampleImageFiles []SampleImageFiles  `xml:"SAMPLE_IMAGE_FILES"`
+	SampleImageFiles SampleImageFiles    `xml:"SAMPLE_IMAGE_FILES"`
 	Attributes       *NullableAttributes `xml:"ATTRIBUTES"`
 }
 
 type SampleImageFiles struct {
+	SampleImageFiles []SampleImageFile `xml:"SAMPLE_IMAGE_FILE"`
+}
+
+type SampleImageFile struct {
 	FileBaseType
 	Filetype string `xml:"filetype,attr"`
 }
