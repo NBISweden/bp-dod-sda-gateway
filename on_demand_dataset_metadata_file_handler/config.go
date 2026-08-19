@@ -24,6 +24,8 @@ var (
 	inboxDisableHTTPS bool
 
 	c4ghPublicKeyFilePath string
+
+	datasetCreateFilesBatchSize int
 )
 
 func init() {
@@ -104,6 +106,16 @@ func init() {
 			Required: false,
 			AssignFunc: func(flagName string) {
 				sdaAPIPollInterval = viper.GetDuration(flagName)
+			},
+		},
+		&config.Flag{
+			Name: "sda_api.dataset_create_batch_size",
+			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
+				flagSet.Int(flagName, 1000, "Amunt of files to do in each dataset/create request")
+			},
+			Required: false,
+			AssignFunc: func(flagName string) {
+				datasetCreateFilesBatchSize = viper.GetInt(flagName)
 			},
 		},
 		&config.Flag{

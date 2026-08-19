@@ -108,6 +108,13 @@ func (dmfh *dodMetadataFileHandler) triggerFileAccession(ctx context.Context, fi
 	return nil
 }
 
+type datasetCreateReq struct {
+	DatasetAccession  string            `json:"dataset_id"`
+	FileAccessionIDs  []string          `json:"accession_ids"`
+	User              string            `json:"user"`
+	FileDownloadPaths map[string]string `json:"file_download_paths"`
+}
+
 func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string, imageAccessionFileNames map[string]map[string]string) error {
 	ctx, span := observability.StartSpan(ctx, "triggerDatasetCreation", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession))
 	defer span.End()
@@ -117,61 +124,67 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, 
 		return fmt.Errorf("invalid base URL: %w", err)
 	}
 
-	var fileAccessions []string
-	fileNames := make(map[string]string)
+	fileDownloadPaths := make(map[string]string)
 
 	for metadataType, metadataFileAccession := range datasetMetadataFiles {
 		// Exclude rems
 		if metadataType == metadata_models.MetadataFileTypeRems {
 			continue
 		}
-		fileAccessions = append(fileAccessions, metadataFileAccession)
-		fileNames[metadataFileAccession] = fmt.Sprintf("METADATA/%s.xml.c4gh", metadataType.String())
+		fileDownloadPaths[metadataFileAccession] = fmt.Sprintf("METADATA/%s.xml.c4gh", metadataType.String())
 	}
 
 	for imageAccession, imageFileNames := range imageAccessionFileNames {
 		for fileAccession, baseFileName := range imageFileNames {
-			fileAccessions = append(fileAccessions, fileAccession)
-			fileNames[fileAccession] = fmt.Sprintf("IMAGES/IMAGE_%s/%s.c4gh", imageAccession, baseFileName)
+			fileDownloadPaths[fileAccession] = fmt.Sprintf("IMAGES/IMAGE_%s/%s.c4gh", imageAccession, baseFileName)
 		}
 	}
 
-	datasetCreateReq := struct {
-		DatasetAccession  string            `json:"dataset_id"`
-		FileAccessionIDs  []string          `json:"accession_ids"`
-		User              string            `json:"user"`
-		FileDownloadPaths map[string]string `json:"file_download_paths"`
-	}{
-		DatasetAccession:  datasetAccession,
-		FileAccessionIDs:  fileAccessions,
-		User:              dmfh.uploadUser,
-		FileDownloadPaths: fileNames,
-	}
+	for len(fileDownloadPaths) > 0 {
+		fileAccessionsInBatch := make([]string, 0, datasetCreateFilesBatchSize)
+		fileDownloadPathsInBatch := make(map[string]string)
 
-	reqBody, err := json.Marshal(datasetCreateReq)
-	if err != nil {
-		return fmt.Errorf("failed to marshal dataset request body: %w", err)
-	}
+		for fileAccession, fileDownloadPath := range fileDownloadPaths {
+			if len(fileAccessionsInBatch) == datasetCreateFilesBatchSize {
+				break
+			}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+inboxToken)
+			fileAccessionsInBatch = append(fileAccessionsInBatch, fileAccession)
+			fileDownloadPathsInBatch[fileAccession] = fileDownloadPath
+			delete(fileDownloadPaths, fileAccession)
+		}
 
-	resp, err := dmfh.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("http request: %w", err)
-	}
-	defer func() {
+		dcr := &datasetCreateReq{
+			DatasetAccession:  datasetAccession,
+			FileAccessionIDs:  fileAccessionsInBatch,
+			User:              dmfh.uploadUser,
+			FileDownloadPaths: fileDownloadPathsInBatch,
+		}
+
+		reqBody, err := json.Marshal(dcr)
+		if err != nil {
+			return fmt.Errorf("failed to marshal dataset request body: %w", err)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(reqBody))
+		if err != nil {
+			return fmt.Errorf("build request: %w", err)
+		}
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("Authorization", "Bearer "+inboxToken)
+
+		resp, err := dmfh.httpClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("http request: %w", err)
+		}
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+
+			return fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
+		}
 		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-
-		return fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
