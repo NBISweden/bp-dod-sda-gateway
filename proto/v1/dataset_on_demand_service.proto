@@ -1,0 +1,39 @@
+syntax = "proto3";
+package dataset_on_demand;
+
+option go_package = "github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/v1";
+
+
+service DatasetOnDemandService {
+  rpc NewOriginDataset(NewOriginDatasetRequest) returns (NewOriginDatasetResponse);
+  rpc RequestDatasetCreation(RequestDatasetCreationRequest) returns (RequestDatasetCreationResponse);
+  rpc GetOnDemandDatasetStatus(GetOnDemandDatasetStatusRequest) returns (GetOnDemandDatasetStatusResponse);
+}
+
+message NewOriginDatasetRequest {
+  string dataset_accession = 1;
+}
+message NewOriginDatasetResponse {
+}
+message RequestDatasetCreationRequest {
+  repeated string image_accessions = 1;
+  string user = 2;
+}
+message RequestDatasetCreationResponse {
+  string on_demand_dataset_accession = 1;
+}
+message GetOnDemandDatasetStatusRequest {
+  string on_demand_dataset_accession = 1;
+}
+message GetOnDemandDatasetStatusResponse {
+  enum Status {
+    STATUS_INVALID = 0;
+    STATUS_CREATING = 1;
+    STATUS_RELEASED = 2;
+  }
+  Status status = 1;
+}
+
+
+
+
