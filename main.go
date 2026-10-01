@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -11,16 +12,17 @@ import (
 	"syscall"
 	"time"
 
+	"connectrpc.com/authn"
 	"connectrpc.com/connect"
-	"connectrpc.com/grpcreflect"
 	"connectrpc.com/otelconnect"
 	"github.com/NBISweden/bp-dod-sda-gateway/config"
 	"github.com/NBISweden/bp-dod-sda-gateway/database"
 	"github.com/NBISweden/bp-dod-sda-gateway/database/postgres"
-	"github.com/NBISweden/bp-dod-sda-gateway/dataset_on_demand_service_impl"
-	dodservice "github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/v1/v1connect"
+	"github.com/NBISweden/bp-dod-sda-gateway/dataset_on_demand"
+	"github.com/NBISweden/bp-dod-sda-gateway/dataset_on_demand_admin"
 	"github.com/NBISweden/bp-dod-sda-gateway/on_demand_dataset_metadata_file_handler"
-	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader/metadata_submitter_database"
+	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader/metadata_submitter"
+	"github.com/NBISweden/bp-dod-sda-gateway/pkg/auth_interceptor"
 	configpkg "github.com/NBISweden/bp-dod-sda-gateway/pkg/config"
 	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
 )
@@ -39,13 +41,13 @@ func run() error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	callbacks, err := observability.SetupOTelSDK(ctx, "bp-dod-sda-gateway")
+	shutdown, err := observability.SetupOTelSDK(ctx, "bp-dod-sda-gateway")
 	if err != nil {
-		return fmt.Errorf("failed to init observability: %w", err)
+		return fmt.Errorf("failed to setup OTel SDK: %v", err)
 	}
 	defer func() {
-		if err := callbacks(ctx); err != nil {
-			slog.Error("failed to shutdown observability", "error", err.Error())
+		if err := shutdown(ctx); err != nil {
+			slog.Error("failed to shutdown OTel SDK", "err", err)
 		}
 	}()
 
@@ -56,7 +58,6 @@ func run() error {
 		_ = database.Close()
 	}()
 
-	mux := http.NewServeMux()
 	otelInterceptor, err := otelconnect.NewInterceptor(
 		otelconnect.WithoutServerPeerAttributes(),
 	)
@@ -68,7 +69,7 @@ func run() error {
 		return fmt.Errorf("failed to init dod metadata file handler: %w", err)
 	}
 
-	msdb, err := metadata_submitter_database.NewMetadataSubmitterDatabase()
+	msdb, err := metadata_submitter.NewMetadataSubmitterDatabase(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to init metadata submitter database: %w", err)
 	}
@@ -76,46 +77,65 @@ func run() error {
 		_ = msdb.Close()
 	}()
 
-	dodServiceImpl, err := dataset_on_demand_service_impl.NewDodServiceImpl(
-		dataset_on_demand_service_impl.OriginDatasetFileLoader(msdb),
+	authenticator, err := auth_interceptor.NewAuthenticator(config.DodServiceJwtPubKeyUrl())
+	if err != nil {
+		return fmt.Errorf("failed to init authenticator: %w", err)
+	}
+	authMiddleware := authn.NewMiddleware(
+		authenticator.Authenticate,
+	)
+
+	dodServer, err := dataset_on_demand.NewServer(
+		dataset_on_demand.Config{
+			Port:                   config.DodServicePort(),
+			AuthMiddleware:         authMiddleware,
+			ConnectRPCInterceptors: []connect.Interceptor{otelInterceptor},
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to init dod service impl: %w", err)
+	}
+	dodAdminServer, err := dataset_on_demand_admin.NewServer(
+		dataset_on_demand_admin.Config{
+			Port:                    config.DodServicePort(),
+			ConnectRPCInterceptors:  []connect.Interceptor{otelInterceptor},
+			OriginDatasetFileLoader: msdb,
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to init dod service impl: %w", err)
 	}
 
-	mux.Handle(dodservice.NewDatasetOnDemandServiceHandler(
-		dodServiceImpl,
-		connect.WithInterceptors(otelInterceptor),
-	))
-
-	reflector := grpcreflect.NewStaticReflector(
-		dodservice.DatasetOnDemandServiceName,
-	)
-
-	mux.Handle(grpcreflect.NewHandlerV1(reflector))
-	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
-
-	p := new(http.Protocols)
-	p.SetHTTP1(true)
-	// Use h2c so we can serve HTTP/2 without TLS.
-	p.SetUnencryptedHTTP2(true)
-	srv := http.Server{
-		Addr:              fmt.Sprintf(":%d", config.DodServicePort()),
-		Handler:           mux,
-		Protocols:         p,
-		ReadHeaderTimeout: 20 * time.Second,
-	}
 	serverErr := make(chan error, 1)
-
 	go func() {
-		if err := srv.ListenAndServe(); err != nil {
-			serverErr <- err
+		if err := dodServer.ListenAndServe(); err != nil {
+			if !errors.Is(err, http.ErrServerClosed) {
+				serverErr <- err
+			}
 		}
 	}()
 
 	defer func() {
 		serverShutdownCtx, serverShutdownCancel := context.WithTimeout(ctx, 10*time.Second)
-		if err := srv.Shutdown(serverShutdownCtx); err != nil {
+		if err := dodServer.Shutdown(serverShutdownCtx); err != nil {
+			slog.Error("failed to close http/https server", "error", err)
+		}
+		serverShutdownCancel()
+	}()
+
+	adminServerErr := make(chan error, 1)
+
+	go func() {
+		if err := dodAdminServer.ListenAndServe(); err != nil {
+			if !errors.Is(err, http.ErrServerClosed) {
+				adminServerErr <- err
+			}
+		}
+	}()
+
+	defer func() {
+		serverShutdownCtx, serverShutdownCancel := context.WithTimeout(ctx, 10*time.Second)
+		if err := dodAdminServer.Shutdown(serverShutdownCtx); err != nil {
 			slog.Error("failed to close http/https server", "error", err)
 		}
 		serverShutdownCancel()
@@ -124,11 +144,18 @@ func run() error {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	slog.Info("DatasetOnDemandService started", "port", config.DodServicePort())
+	slog.Info("bp-dod-sda-gateway started",
+		"dod-port", config.DodServicePort(),
+		"dod-admin-port", config.DodAdminServicePort(),
+	)
 
 	select {
-	case <-sigc:
+	case sig := <-sigc:
+		slog.Info("received signal", slog.String("signal", sig.String()))
+
 		return nil
+	case err := <-adminServerErr:
+		return err
 	case err := <-serverErr:
 		return err
 	}

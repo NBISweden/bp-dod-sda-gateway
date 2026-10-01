@@ -17,9 +17,7 @@ func (db *pgDb) insertOnDemandDatasetImage(ctx context.Context, tx *sql.Tx, onDe
 		return err
 	}
 
-	if _, err := stmt.ExecContext(ctx,
-		onDemandDatasetAccession, imageAccession,
-	); err != nil {
+	if _, err := stmt.ExecContext(ctx, onDemandDatasetAccession, imageAccession); err != nil {
 		return err
 	}
 

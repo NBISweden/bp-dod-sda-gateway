@@ -18,9 +18,7 @@ func (db *pgDb) setOnDemandDatasetReleased(ctx context.Context, tx *sql.Tx, acce
 		return err
 	}
 
-	if _, err := insertDatasetStmt.ExecContext(ctx,
-		accession,
-	); err != nil {
+	if _, err := insertDatasetStmt.ExecContext(ctx, accession); err != nil {
 		return err
 	}
 

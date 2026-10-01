@@ -3,6 +3,7 @@ package observability
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -38,48 +39,53 @@ type Span interface {
 
 type span struct {
 	oteltrace.Span
-	ctx   context.Context
-	name  string
-	start time.Time
+	ctx     context.Context
+	name    string
+	start   time.Time
+	endOnce sync.Once
 }
 
-func (s span) EndWithAttributes(attrs ...attribute.KeyValue) {
+func (s *span) EndWithAttributes(attrs ...attribute.KeyValue) {
 	s.end(nil, attrs...)
 }
-func (s span) End(options ...oteltrace.SpanEndOption) {
+func (s *span) End(options ...oteltrace.SpanEndOption) {
 	s.end(options, nil...)
 }
 
-func (s span) end(options []oteltrace.SpanEndOption, attrs ...attribute.KeyValue) {
-	if len(attrs) > 0 {
-		s.SetAttributes(attrs...)
-	}
+func (s *span) end(options []oteltrace.SpanEndOption, attrs ...attribute.KeyValue) {
+	s.endOnce.Do(
+		func() {
+			if len(attrs) > 0 {
+				s.SetAttributes(attrs...)
+			}
 
-	slog.LogAttrs(s.ctx, slog.LevelDebug, "span ended",
-		append(otelAttrsToSlog(attrs),
-			slog.String("span", s.name),
-			slog.Duration("duration", time.Since(s.start)),
-			slog.String("trace-id", s.SpanContext().TraceID().String()),
-			slog.String("span-id", s.SpanContext().SpanID().String()),
-		)...,
+			slog.LogAttrs(s.ctx, slog.LevelDebug, "span ended",
+				append(otelAttrsToSlog(attrs),
+					slog.String("span", s.name),
+					slog.Duration("duration", time.Since(s.start)),
+					slog.String("trace-id", s.SpanContext().TraceID().String()),
+					slog.String("span-id", s.SpanContext().SpanID().String()),
+				)...,
+			)
+
+			s.Span.End(options...)
+		},
 	)
-
-	s.Span.End(options...)
 }
 
-func (s span) Debug(msg string, args ...slog.Attr) {
+func (s *span) Debug(msg string, args ...slog.Attr) {
 	s.log(msg, slog.LevelDebug, args...)
 }
 
-func (s span) Info(msg string, args ...slog.Attr) {
+func (s *span) Info(msg string, args ...slog.Attr) {
 	s.log(msg, slog.LevelInfo, args...)
 }
 
-func (s span) Warn(msg string, args ...slog.Attr) {
+func (s *span) Warn(msg string, args ...slog.Attr) {
 	s.log(msg, slog.LevelWarn, args...)
 }
 
-func (s span) Error(msg string, err error, args ...slog.Attr) {
+func (s *span) Error(msg string, err error, args ...slog.Attr) {
 	if err != nil {
 		s.RecordError(err)
 		args = append(args, slog.Any("error", err))
@@ -88,7 +94,7 @@ func (s span) Error(msg string, err error, args ...slog.Attr) {
 	s.SetStatus(codes.Error, msg)
 }
 
-func (s span) log(msg string, level slog.Level, args ...slog.Attr) {
+func (s *span) log(msg string, level slog.Level, args ...slog.Attr) {
 	slog.LogAttrs(s.ctx, level, msg, append(args,
 		slog.String("trace-id", s.SpanContext().TraceID().String()),
 		slog.String("span-id", s.SpanContext().SpanID().String()),

@@ -1,4 +1,4 @@
-FROM golang:1.26-trixie AS builder
+FROM golang:1.27-trixie AS builder
 
 ENV GOPATH=$PWD
 ENV CGO_ENABLED=0
