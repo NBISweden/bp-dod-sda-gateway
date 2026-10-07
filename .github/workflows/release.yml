@@ -1,0 +1,217 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 1.2.3)"
+        required: true
+        type: string
+
+jobs:
+  prepare_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Ensure main or hotfix branch
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+
+          echo "Branch: $BRANCH"
+          
+          if [[ "$BRANCH" != "main" && ! "$BRANCH" =~ ^hotfix/ ]]; then
+            echo "Workflow may only run on:"
+            echo "  - main"
+            echo "  - hotfix/*"
+            exit 1
+          fi
+
+      - name: Validate target version
+        env:
+          TARGET_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          
+          # Validate target version format
+          if ! [[ "$TARGET_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+([.-][A-Za-z0-9]+)*)?$ ]]; then
+            echo "$TARGET_VERSION: Version must match MAJOR.MINOR.PATCH[-suffix]"
+            exit 1
+          fi
+
+          CHANGELOG_VERSION=$(
+            grep -E '^## \[[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+([.-][A-Za-z0-9]+)*)?\]' CHANGELOG.md \
+            | head -n1 \
+            | sed -E 's/^## \[([0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+([.-][A-Za-z0-9]+)*)?)\].*/\1/'
+          )
+
+          if [ -z "$CHANGELOG_VERSION" ]; then
+            echo "Could not determine current version from the CHANGELOG.md"
+            exit 1
+          fi
+
+          if [ "$CHANGELOG_VERSION" != "${TARGET_VERSION}" ]; then
+            echo "Latest version in changelog is $CHANGELOG_VERSION, target version is ${TARGET_VERSION}"
+            exit 1
+          fi
+
+          UNRELEASED_CONTENT=$(
+            awk '
+            /^## \[Unreleased\]/ { in_section=1; next }
+            /^## \[/ && in_section { exit }
+            in_section { print }
+            ' CHANGELOG.md
+          )
+
+          # Remove blank lines and whitespace
+          UNRELEASED_CONTENT_CLEAN=$(echo "$UNRELEASED_CONTENT" | sed '/^[[:space:]]*$/d')
+
+          if [ -n "$UNRELEASED_CONTENT_CLEAN" ]; then
+            echo "Unreleased section is not empty"
+            exit 1
+          fi
+
+           CONTENT_TO_BE_RELEASED=$(
+            awk "
+            /^## \[${TARGET_VERSION}\]/ { in_section=1; next }
+            /^## \[/ && in_section { exit }
+            in_section { print }
+            " CHANGELOG.md
+          )
+
+          # Remove blank lines and whitespace
+          CONTENT_TO_BE_RELEASED_CLEAN=$(echo "$CONTENT_TO_BE_RELEASED" | sed '/^[[:space:]]*$/d')
+
+          if [ -z "$CONTENT_TO_BE_RELEASED_CLEAN" ]; then
+            echo "Changelog entry for ${TARGET_VERSION} is empty"
+            exit 1
+          fi
+
+      - name: Create and push tag
+        env:
+          TARGET_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          
+          git tag "v${TARGET_VERSION}"
+          git push origin "v${TARGET_VERSION}"
+
+
+      - name: Extract release notes
+        env:
+          TARGET_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          awk "
+            /^## \\[${TARGET_VERSION}\\]/ { in_section=1; next }
+            /^## \\[/ && in_section { exit }
+            in_section { print }
+          " CHANGELOG.md > RELEASE_NOTES.md
+
+      - name: Draft release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: "v${{ inputs.version }}"
+          tag_name: "v${{ inputs.version }}"
+          draft: true
+          make_latest: false
+          generate_release_notes: false
+          body_path: RELEASE_NOTES.md
+
+  package:
+    name: Build ${{ matrix.name }} Docker Image
+    needs: [prepare_release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v6
+        with:
+          ref: v${{ inputs.version }}
+          fetch-depth: 0
+
+      - name: Log in to the Github Container registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract git sha
+        run: |
+          GIT_SHA=$(git rev-parse HEAD)
+          echo "GIT_SHA=$GIT_SHA" >> $GITHUB_ENV
+
+      - name: Build ${{ matrix.name }} container
+        uses: docker/build-push-action@v7
+        with:
+          context: ./${{ matrix.path }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:v${{ inputs.version }}
+          labels: |
+            org.opencontainers.image.title=${{ github.repository }}
+            org.opencontainers.image.description=Big Picture Dataset On Demand sda middleware
+            org.opencontainers.image.authors=NeIC System Developers
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}/tree/v${{ inputs.version }}
+            org.opencontainers.image.created=${{ github.run_started_at }}
+            org.opencontainers.image.revision=${{ env.GIT_SHA }}
+            org.opencontainers.image.version=v${{ inputs.version }}
+
+  publish_release:
+    name: Publish release
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: "v${{ inputs.version }}"
+          tag_name: "v${{ inputs.version }}"
+          make_latest: true
+          generate_release_notes: false
+          append_body: true
+          body: |
+            # Docker images:
+            - ghcr.io/${{ github.repository }}:v${{ inputs.version }}
+
+  code_ql:
+    name: Run CodeQL
+    needs: package
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'go' ]
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v6
+        with:
+          ref: v${{ inputs.version }}
+          fetch-depth: 0
+
+      # Initializes the CodeQL tools for scanning.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Autobuild
+        if: ${{ matrix.language == 'go' }}
+        uses: github/codeql-action/autobuild@v4
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{matrix.language}}"
+
