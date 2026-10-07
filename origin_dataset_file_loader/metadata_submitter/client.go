@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -12,108 +11,51 @@ import (
 	"net/http"
 	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/NBISweden/bp-dod-sda-gateway/models"
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader"
-	"github.com/XSAM/otelsql"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/lib/pq"
-	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/metric"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
 
 type metadataSubmitterClient struct {
+	sync.RWMutex
+
 	client *http.Client
 
 	ctx    context.Context
 	cancel context.CancelFunc
 	cache  map[string]*cacheEntry
-	sync.RWMutex
-
-	db                 *sql.DB
-	config             *dbConfig
-	preparedStatements map[string]*sql.Stmt
-
-	metricsReg metric.Registration
 }
 
 type cacheEntry struct {
 	lastAccessed  time.Time
 	originDataset *models.OriginDataset
+	files         []*origin_dataset_file_loader.FileInfo
 }
 
 var queries = make(map[string]string)
 
 func NewMetadataSubmitterDatabase(ctx context.Context) (origin_dataset_file_loader.OriginDatasetFileLoader, error) {
 	ctx, cancel := context.WithCancel(ctx)
-	dbConf := globalConf.clone()
 
-	pg := &metadataSubmitterClient{
-		db:     nil,
-		config: dbConf,
+	return &metadataSubmitterClient{
 		client: http.DefaultClient,
 		ctx:    ctx,
 		cancel: cancel,
-	}
-
-	pqConnectConfig, err := pq.NewConnectorConfig(pg.config.buildPostgresConfig())
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup postgres connect config: %w", err)
-	}
-
-	pg.db = otelsql.OpenDB(pqConnectConfig)
-	if err := pg.db.Ping(); err != nil {
-		_ = pg.Close()
-
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
-	}
-
-	pg.metricsReg, err = otelsql.RegisterDBStatsMetrics(pg.db, otelsql.WithAttributes(
-		semconv.DBSystemPostgreSQL,
-	))
-	if err != nil {
-		_ = pg.Close()
-
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
-	}
-
-	// Prepare the statements from the queries
-	pg.preparedStatements = make(map[string]*sql.Stmt)
-	for queryName, query := range queries {
-		preparedStmt, err := pg.db.Prepare(query)
-		if err != nil {
-			log.Errorf("failed to prepare query: %s, due to: %v", queryName, err)
-			_ = pg.Close()
-
-			return nil, fmt.Errorf("failed to prepare query: %s, due to: %w", queryName, err)
-		}
-		pg.preparedStatements[queryName] = preparedStmt
-	}
-
-	pg.db.SetMaxIdleConns(pg.config.maxIdleConnections)
-	pg.db.SetMaxOpenConns(pg.config.maxOpenConnections)
-	pg.db.SetConnMaxIdleTime(pg.config.connectionMaxIdleTime)
-	pg.db.SetConnMaxLifetime(pg.config.connectionMaxLifeTime)
-
-	return pg, nil
+	}, nil
 }
 
 func (mdc *metadataSubmitterClient) Ping(ctx context.Context) error {
-	if mdc == nil || mdc.db == nil {
-		return errors.New("database not initialized")
+	if mdc == nil {
+		return errors.New("metadata submitter client not initialized")
 	}
-
-	if err := mdc.db.PingContext(ctx); err != nil {
-		return err
-	}
-
-	rsp, err := mdc.client.Get(path.Join(mdc.config.metadataSubmitterURL, "health"))
+	rsp, err := mdc.client.Get(path.Join(metadataSubmitterURL, "health"))
 	if err != nil {
 		return err
 	}
@@ -155,43 +97,11 @@ func (mdc *metadataSubmitterClient) cacheCleanTicker() {
 
 // Close terminates the connection to the database
 func (mdc *metadataSubmitterClient) Close() error {
-	if mdc == nil {
-		return nil
+	if mdc != nil {
+		mdc.cancel()
 	}
 
-	var err error
-	if mdc.preparedStatements != nil {
-		for queryName, stmt := range mdc.preparedStatements {
-			if stmtErr := stmt.Close(); stmtErr != nil {
-				err = errors.Join(err, fmt.Errorf("failed to close %s stmt, due to: %w", queryName, stmtErr))
-			}
-		}
-	}
-
-	if mdc.db != nil {
-		err = errors.Join(err, mdc.db.Close())
-	}
-
-	if mdc.metricsReg != nil {
-		err = errors.Join(err, mdc.metricsReg.Unregister())
-	}
-
-	mdc.cancel()
-
-	return err
-}
-
-func (mdc *metadataSubmitterClient) getPreparedStmt(queryName string) (*sql.Stmt, error) {
-	if mdc == nil || mdc.preparedStatements == nil {
-		return nil, errors.New("database not initialized")
-	}
-
-	stmt := mdc.preparedStatements[queryName]
-	if stmt == nil {
-		return nil, fmt.Errorf("statement with name: %s not found", queryName)
-	}
-
-	return stmt, nil
+	return nil
 }
 
 func (mdc *metadataSubmitterClient) getDatasetMetadata(ctx context.Context, datasetAccession string) (*cacheEntry, error) {
@@ -205,7 +115,7 @@ func (mdc *metadataSubmitterClient) getDatasetMetadata(ctx context.Context, data
 		return entry, nil
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, path.Join(mdc.config.metadataSubmitterURL, "sync", datasetAccession), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, path.Join(metadataSubmitterURL, "sync", datasetAccession), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build http request: %w", err)
 	}
@@ -237,9 +147,14 @@ func (mdc *metadataSubmitterClient) getDatasetMetadata(ctx context.Context, data
 		return nil, fmt.Errorf("failed to create zip reader from response body: %w", err)
 	}
 
-	originDataset := &models.OriginDataset{
-		Accession: datasetAccession,
+	entry = &cacheEntry{
+		lastAccessed: time.Now(),
+		originDataset: &models.OriginDataset{
+			Accession: datasetAccession,
+		},
+		files: nil,
 	}
+
 	for _, f := range zr.File {
 		rc, err := f.Open()
 		if err != nil {
@@ -249,21 +164,21 @@ func (mdc *metadataSubmitterClient) getDatasetMetadata(ctx context.Context, data
 		xmlDecoder := xml.NewDecoder(rc)
 		switch f.Name {
 		case "dataset.xml":
-			err = xmlDecoder.Decode(&originDataset.Dataset)
+			err = xmlDecoder.Decode(&entry.originDataset.Dataset)
 		case "image.xml":
-			err = xmlDecoder.Decode(&originDataset.Image)
+			err = xmlDecoder.Decode(&entry.originDataset.Image)
 		case "annotation.xml":
-			err = xmlDecoder.Decode(&originDataset.Annotation)
+			err = xmlDecoder.Decode(&entry.originDataset.Annotation)
 		case "observation.xml":
-			err = xmlDecoder.Decode(&originDataset.Observation)
+			err = xmlDecoder.Decode(&entry.originDataset.Observation)
 		case "observer.xml":
-			err = xmlDecoder.Decode(&originDataset.Observer)
+			err = xmlDecoder.Decode(&entry.originDataset.Observer)
 		case "policy.xml":
-			err = xmlDecoder.Decode(&originDataset.Policy)
+			err = xmlDecoder.Decode(&entry.originDataset.Policy)
 		case "sample.xml":
-			err = xmlDecoder.Decode(&originDataset.Sample)
+			err = xmlDecoder.Decode(&entry.originDataset.Sample)
 		case "staining.xml":
-			err = xmlDecoder.Decode(&originDataset.Staining)
+			err = xmlDecoder.Decode(&entry.originDataset.Staining)
 		case "rems.xml":
 			var remsEntry metadata_models.Rems
 			if err = xmlDecoder.Decode(&remsEntry); err != nil {
@@ -273,8 +188,27 @@ func (mdc *metadataSubmitterClient) getDatasetMetadata(ctx context.Context, data
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse rems workflow id to an integer: %w", err)
 			}
-			originDataset.RemsWorkflowID = workflowID
-			originDataset.RemsOrganisationID = remsEntry.OrganisationId
+			entry.originDataset.RemsWorkflowID = workflowID
+			entry.originDataset.RemsOrganisationID = remsEntry.OrganisationId
+		case "files.json":
+			type file struct {
+				FileID string `json:"file_id"`
+				Path   string `json:"path"`
+			}
+			var files []*file
+
+			if err = xmlDecoder.Decode(&files); err != nil {
+				break
+			}
+			for _, f := range files {
+				entry.files = append(entry.files, &origin_dataset_file_loader.FileInfo{
+					Accession:        f.FileID,
+					Path:             f.Path,
+					DatasetAccession: datasetAccession,
+					MetadataFileType: metadataTypeFromPath(f.Path),
+				})
+			}
+
 		default:
 		}
 
@@ -284,13 +218,32 @@ func (mdc *metadataSubmitterClient) getDatasetMetadata(ctx context.Context, data
 		}
 	}
 
-	entry = &cacheEntry{
-		lastAccessed:  time.Now(),
-		originDataset: originDataset,
-	}
 	mdc.cache[datasetAccession] = entry
 
 	return entry, nil
+}
+
+func metadataTypeFromPath(filePath string) metadata_models.MetadataFileType {
+	switch {
+	case strings.HasSuffix(filePath, "METADATA/dataset.xml.c4gh"):
+		return metadata_models.MetadataFileTypeDataset
+	case strings.HasSuffix(filePath, "METADATA/image.xml.c4gh"):
+		return metadata_models.MetadataFileTypeImage
+	case strings.HasSuffix(filePath, "METADATA/annotation.xml.c4gh"):
+		return metadata_models.MetadataFileTypeAnnotation
+	case strings.HasSuffix(filePath, "METADATA/observation.xml.c4gh"):
+		return metadata_models.MetadataFileTypeObservation
+	case strings.HasSuffix(filePath, "METADATA/observer.xml.c4gh"):
+		return metadata_models.MetadataFileTypeObserver
+	case strings.HasSuffix(filePath, "METADATA/policy.xml.c4gh"):
+		return metadata_models.MetadataFileTypePolicy
+	case strings.HasSuffix(filePath, "METADATA/sample.xml.c4gh"):
+		return metadata_models.MetadataFileTypeSample
+	case strings.HasSuffix(filePath, "METADATA/staining.xml.c4gh"):
+		return metadata_models.MetadataFileTypeStaining
+	default:
+		return metadata_models.MetadataFileTypeInvalid
+	}
 }
 
 func (mdc *metadataSubmitterClient) generateAndSignToken() (string, error) {
@@ -302,7 +255,7 @@ func (mdc *metadataSubmitterClient) generateAndSignToken() (string, error) {
 		jwt.AudienceKey:   "metadata-submitter",
 	}
 
-	jwtKey, err := jwk.ParseKey(mdc.config.privateKey, jwk.WithPEM(true))
+	jwtKey, err := jwk.ParseKey(privateKey, jwk.WithPEM(true))
 	if err != nil {
 		return "", err
 	}
@@ -326,4 +279,52 @@ func (mdc *metadataSubmitterClient) generateAndSignToken() (string, error) {
 	}
 
 	return string(tokenString), nil
+}
+
+func (mdc *metadataSubmitterClient) GetRemsWorkFlowIDAndOrganisationID(ctx context.Context, datasetAccession string) (int, string, error) {
+	entry, err := mdc.getDatasetMetadata(ctx, datasetAccession)
+	if err != nil {
+		return 0, "", err
+	}
+
+	return entry.originDataset.RemsWorkflowID, entry.originDataset.RemsOrganisationID, nil
+}
+
+func (mdc *metadataSubmitterClient) UnmarshalFileToXml(ctx context.Context, file *origin_dataset_file_loader.FileInfo, dst any) error {
+	entry, err := mdc.getDatasetMetadata(ctx, file.DatasetAccession)
+	if err != nil {
+		return err
+	}
+
+	switch file.MetadataFileType {
+	case metadata_models.MetadataFileTypeDataset:
+		*dst.(*metadata_models.DatasetSet) = *entry.originDataset.Dataset
+	case metadata_models.MetadataFileTypeImage:
+		*dst.(*metadata_models.ImageSet) = *entry.originDataset.Image
+	case metadata_models.MetadataFileTypeAnnotation:
+		*dst.(*metadata_models.AnnotationSet) = *entry.originDataset.Annotation
+	case metadata_models.MetadataFileTypeObservation:
+		*dst.(*metadata_models.ObservationSet) = *entry.originDataset.Observation
+	case metadata_models.MetadataFileTypeObserver:
+		*dst.(*metadata_models.ObserverSet) = *entry.originDataset.Observer
+	case metadata_models.MetadataFileTypePolicy:
+		*dst.(*metadata_models.PolicySet) = *entry.originDataset.Policy
+	case metadata_models.MetadataFileTypeSample:
+		*dst.(*metadata_models.SampleSet) = *entry.originDataset.Sample
+	case metadata_models.MetadataFileTypeStaining:
+		*dst.(*metadata_models.StainingSet) = *entry.originDataset.Staining
+	default:
+		return errors.New("unknown metadata file type")
+	}
+
+	return nil
+}
+
+func (mdc *metadataSubmitterClient) ListDatasetFiles(ctx context.Context, datasetAccession string) ([]*origin_dataset_file_loader.FileInfo, error) {
+	entry, err := mdc.getDatasetMetadata(ctx, datasetAccession)
+	if err != nil {
+		return nil, err
+	}
+
+	return entry.files, nil
 }
