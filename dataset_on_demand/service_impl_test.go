@@ -146,17 +146,27 @@ func (m *mockDatabase) SetOnDemandDatasetReleased(_ context.Context, datasetAcce
 	return args.Error(0)
 }
 
+func (m *mockDatabase) InsertOnDemandDatasetRequest(_ context.Context, user, datasetAccession, label string) error {
+	args := m.Called(user, datasetAccession, label)
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error) {
+	args := m.Called(user)
+
+	return args.Get(0).([]*models.OnDemandDatasetRequest), args.Error(1)
+}
+
 func TestRequestDatasetCreation(t *testing.T) {
 	for _, tc := range []struct {
-		name                             string
-		user                             string
-		imageAccessions                  []string
-		mockDodMetadataFileHandlerOn     func() *mockDodMetadataFileHandler
-		mockDodMetadataFileHandlerAssert func(*testing.T, *mockDodMetadataFileHandler)
-		mockDatabaseOn                   func() *mockDatabase
-		mockDatabaseAssert               func(*testing.T, *mockDatabase)
-		expectedError                    error
-		expectedNilResponse              bool
+		name                         string
+		user                         string
+		imageAccessions              []string
+		mockDodMetadataFileHandlerOn func() *mockDodMetadataFileHandler
+		mockDatabaseOn               func() *mockDatabase
+		expectedError                error
+		expectedNilResponse          bool
 	}{
 		{
 			name:            "success",
@@ -168,15 +178,12 @@ func TestRequestDatasetCreation(t *testing.T) {
 
 				return mockDmfh
 			},
-			mockDodMetadataFileHandlerAssert: func(t *testing.T, mockDmfh *mockDodMetadataFileHandler) {
-				mockDmfh.AssertNumberOfCalls(t, "RegisterOnDemandDataset", 1)
-			},
 			mockDatabaseOn: func() *mockDatabase {
 				mockDB := &mockDatabase{}
-				mockDB.On("GetOnDemandDatasetAccessionFromImageAccessionsHash", mock.Anything).Return("", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_1").Return("dataset_1", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_2").Return("dataset_2", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_3").Return("dataset_3", nil)
+				mockDB.On("GetOnDemandDatasetAccessionFromImageAccessionsHash", mock.Anything).Return("", nil).Once()
+				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_1").Return("dataset_1", nil).Once()
+				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_2").Return("dataset_2", nil).Once()
+				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_3").Return("dataset_3", nil).Once()
 				mockDB.On("GetOriginDataset", "dataset_1").Return(&models.OriginDataset{
 					Accession:          "dataset_1",
 					RemsWorkflowID:     2,
@@ -322,7 +329,7 @@ func TestRequestDatasetCreation(t *testing.T) {
 							},
 						},
 					},
-				}, nil)
+				}, nil).Once()
 				mockDB.On("GetOriginDataset", "dataset_2").Return(&models.OriginDataset{
 					Accession:          "dataset_2",
 					RemsWorkflowID:     2,
@@ -468,7 +475,7 @@ func TestRequestDatasetCreation(t *testing.T) {
 							},
 						},
 					},
-				}, nil)
+				}, nil).Once()
 				mockDB.On("GetOriginDataset", "dataset_3").Return(&models.OriginDataset{
 					Accession:          "dataset_3",
 					RemsWorkflowID:     2,
@@ -614,87 +621,60 @@ func TestRequestDatasetCreation(t *testing.T) {
 							},
 						},
 					},
-				}, nil)
+				}, nil).Once()
 
-				mockDB.On("InsertOnDemandDataset", mock.Anything, mock.Anything).Return(nil)
-				mockDB.On("InsertOnDemandDatasetImage", mock.Anything, mock.Anything).Return(nil)
-				mockDB.On("BeginTransaction").Return(mockDB, nil)
-				mockDB.On("Commit").Return(nil)
-				mockDB.On("Rollback").Return(nil)
+				mockDB.On("InsertOnDemandDataset", mock.Anything, mock.Anything).Return(nil).Once()
+				mockDB.On("InsertOnDemandDatasetRequest", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+				mockDB.On("InsertOnDemandDatasetImage", mock.Anything, mock.Anything).Return(nil).Times(3)
+				mockDB.On("BeginTransaction").Return(mockDB, nil).Once()
+				mockDB.On("Commit").Return(nil).Once()
+				mockDB.On("Rollback").Return(nil).Once()
 
 				return mockDB
-			},
-			mockDatabaseAssert: func(t *testing.T, mockDB *mockDatabase) {
-				mockDB.AssertNumberOfCalls(t, "GetOnDemandDatasetAccessionFromImageAccessionsHash", 1)
-				mockDB.AssertNumberOfCalls(t, "InsertOnDemandDataset", 1)
-				mockDB.AssertNumberOfCalls(t, "InsertOnDemandDatasetImage", 3)
-
-				mockDB.AssertNumberOfCalls(t, "Commit", 1)
-				mockDB.AssertNumberOfCalls(t, "Rollback", 1)
 			},
 			expectedError:       nil,
 			expectedNilResponse: false,
 		}, {
 			name:            "different_rems_workflow_id",
 			user:            "unit_test",
-			imageAccessions: []string{"image_1", "image_2", "image_3"},
+			imageAccessions: []string{"image_1", "image_2"},
 			mockDodMetadataFileHandlerOn: func() *mockDodMetadataFileHandler {
 				return new(mockDodMetadataFileHandler)
 			},
-			mockDodMetadataFileHandlerAssert: func(t *testing.T, mockDmfh *mockDodMetadataFileHandler) {
-				mockDmfh.AssertNumberOfCalls(t, "RegisterOnDemandDataset", 0)
-			},
 			mockDatabaseOn: func() *mockDatabase {
 				mockDB := &mockDatabase{}
-				mockDB.On("GetOnDemandDatasetAccessionFromImageAccessionsHash", mock.Anything).Return("", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_1").Return("dataset_1", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_2").Return("dataset_2", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_3").Return("dataset_3", nil)
+				mockDB.On("GetOnDemandDatasetAccessionFromImageAccessionsHash", mock.Anything).Return("", nil).Once()
+				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_1").Return("dataset_1", nil).Once()
+				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_2").Return("dataset_2", nil).Once()
 				mockDB.On("GetOriginDataset", "dataset_1").Return(&models.OriginDataset{
 					Accession:          "dataset_1",
 					RemsWorkflowID:     1,
 					RemsOrganisationID: "unit test",
-				}, nil)
+				}, nil).Once()
 				mockDB.On("GetOriginDataset", "dataset_2").Return(&models.OriginDataset{
 					Accession:          "dataset_2",
 					RemsWorkflowID:     2,
 					RemsOrganisationID: "unit test",
-				}, nil)
-				mockDB.On("GetOriginDataset", "dataset_3").Return(&models.OriginDataset{
-					Accession:          "dataset_3",
-					RemsWorkflowID:     3,
-					RemsOrganisationID: "unit test",
-				}, nil)
-				mockDB.On("BeginTransaction").Return(mockDB, nil)
-				mockDB.On("Rollback").Return(nil)
+				}, nil).Once()
+				mockDB.On("BeginTransaction").Return(mockDB, nil).Once()
+				mockDB.On("Rollback").Return(nil).Once()
 
 				return mockDB
-			},
-			mockDatabaseAssert: func(t *testing.T, mockDB *mockDatabase) {
-				mockDB.AssertNumberOfCalls(t, "GetOnDemandDatasetAccessionFromImageAccessionsHash", 1)
-				mockDB.AssertNumberOfCalls(t, "InsertOnDemandDataset", 0)
-
-				mockDB.AssertNumberOfCalls(t, "Commit", 0)
-				mockDB.AssertNumberOfCalls(t, "Rollback", 1)
 			},
 			expectedError:       connect.NewError(connect.CodeInvalidArgument, errors.New("can not combine images from datasets originating from different DaCs")),
 			expectedNilResponse: true,
 		}, {
 			name:            "different_policies_tags",
 			user:            "unit_test",
-			imageAccessions: []string{"image_1", "image_2", "image_3"},
+			imageAccessions: []string{"image_1", "image_2"},
 			mockDodMetadataFileHandlerOn: func() *mockDodMetadataFileHandler {
 				return new(mockDodMetadataFileHandler)
 			},
-			mockDodMetadataFileHandlerAssert: func(t *testing.T, mockDmfh *mockDodMetadataFileHandler) {
-				mockDmfh.AssertNumberOfCalls(t, "RegisterOnDemandDataset", 0)
-			},
 			mockDatabaseOn: func() *mockDatabase {
 				mockDB := &mockDatabase{}
-				mockDB.On("GetOnDemandDatasetAccessionFromImageAccessionsHash", mock.Anything).Return("", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_1").Return("dataset_1", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_2").Return("dataset_2", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_3").Return("dataset_3", nil)
+				mockDB.On("GetOnDemandDatasetAccessionFromImageAccessionsHash", mock.Anything).Return("", nil).Once()
+				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_1").Return("dataset_1", nil).Once()
+				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_2").Return("dataset_2", nil).Once()
 				mockDB.On("GetOriginDataset", "dataset_1").Return(&models.OriginDataset{
 					Accession:          "dataset_1",
 					RemsWorkflowID:     2,
@@ -717,7 +697,7 @@ func TestRequestDatasetCreation(t *testing.T) {
 							},
 						},
 					},
-				}, nil)
+				}, nil).Once()
 				mockDB.On("GetOriginDataset", "dataset_2").Return(&models.OriginDataset{
 					Accession:          "dataset_2",
 					RemsWorkflowID:     2,
@@ -740,60 +720,26 @@ func TestRequestDatasetCreation(t *testing.T) {
 							},
 						},
 					},
-				}, nil)
-				mockDB.On("GetOriginDataset", "dataset_3").Return(&models.OriginDataset{
-					Accession:          "dataset_3",
-					RemsWorkflowID:     2,
-					RemsOrganisationID: "unit test",
-					Policy: &metadata_models.PolicySet{
-						Policies: []metadata_models.Policy{
-							{
-								Attributes: metadata_models.NullableAttributes{
-									Value: &metadata_models.Attributes{
-										StringAttributes: []metadata_models.StringAttribute{
-											{
-												Tag: "diff_tag_3",
-												Value: &metadata_models.NullableString{
-													Value: new("unit_test"),
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				}, nil)
-				mockDB.On("BeginTransaction").Return(mockDB, nil)
-				mockDB.On("Rollback").Return(nil)
+				}, nil).Once()
+				mockDB.On("BeginTransaction").Return(mockDB, nil).Once()
+				mockDB.On("Rollback").Return(nil).Once()
 
 				return mockDB
-			},
-			mockDatabaseAssert: func(t *testing.T, mockDB *mockDatabase) {
-				mockDB.AssertNumberOfCalls(t, "GetOnDemandDatasetAccessionFromImageAccessionsHash", 1)
-				mockDB.AssertNumberOfCalls(t, "InsertOnDemandDataset", 0)
-
-				mockDB.AssertNumberOfCalls(t, "Commit", 0)
-				mockDB.AssertNumberOfCalls(t, "Rollback", 1)
 			},
 			expectedError:       connect.NewError(connect.CodeInvalidArgument, errors.New("can not combine images from datasets with different terms of use")),
 			expectedNilResponse: true,
 		}, {
 			name:            "different_policies_values",
 			user:            "unit_test",
-			imageAccessions: []string{"image_1", "image_2", "image_3"},
+			imageAccessions: []string{"image_1", "image_2"},
 			mockDodMetadataFileHandlerOn: func() *mockDodMetadataFileHandler {
 				return new(mockDodMetadataFileHandler)
 			},
-			mockDodMetadataFileHandlerAssert: func(t *testing.T, mockDmfh *mockDodMetadataFileHandler) {
-				mockDmfh.AssertNumberOfCalls(t, "RegisterOnDemandDataset", 0)
-			},
 			mockDatabaseOn: func() *mockDatabase {
 				mockDB := &mockDatabase{}
-				mockDB.On("GetOnDemandDatasetAccessionFromImageAccessionsHash", mock.Anything).Return("", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_1").Return("dataset_1", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_2").Return("dataset_2", nil)
-				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_3").Return("dataset_3", nil)
+				mockDB.On("GetOnDemandDatasetAccessionFromImageAccessionsHash", mock.Anything).Return("", nil).Once()
+				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_1").Return("dataset_1", nil).Once()
+				mockDB.On("GetOriginDatasetAccessionFromImageAccession", "image_2").Return("dataset_2", nil).Once()
 				mockDB.On("GetOriginDataset", "dataset_1").Return(&models.OriginDataset{
 					Accession:          "dataset_1",
 					RemsWorkflowID:     2,
@@ -816,7 +762,7 @@ func TestRequestDatasetCreation(t *testing.T) {
 							},
 						},
 					},
-				}, nil)
+				}, nil).Once()
 				mockDB.On("GetOriginDataset", "dataset_2").Return(&models.OriginDataset{
 					Accession:          "dataset_2",
 					RemsWorkflowID:     2,
@@ -839,41 +785,11 @@ func TestRequestDatasetCreation(t *testing.T) {
 							},
 						},
 					},
-				}, nil)
-				mockDB.On("GetOriginDataset", "dataset_3").Return(&models.OriginDataset{
-					Accession:          "dataset_3",
-					RemsWorkflowID:     2,
-					RemsOrganisationID: "unit test",
-					Policy: &metadata_models.PolicySet{
-						Policies: []metadata_models.Policy{
-							{
-								Attributes: metadata_models.NullableAttributes{
-									Value: &metadata_models.Attributes{
-										StringAttributes: []metadata_models.StringAttribute{
-											{
-												Tag: "same_tag",
-												Value: &metadata_models.NullableString{
-													Value: new("diff value 3"),
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				}, nil)
-				mockDB.On("BeginTransaction").Return(mockDB, nil)
-				mockDB.On("Rollback").Return(nil)
+				}, nil).Once()
+				mockDB.On("BeginTransaction").Return(mockDB, nil).Once()
+				mockDB.On("Rollback").Return(nil).Once()
 
 				return mockDB
-			},
-			mockDatabaseAssert: func(t *testing.T, mockDB *mockDatabase) {
-				mockDB.AssertNumberOfCalls(t, "GetOnDemandDatasetAccessionFromImageAccessionsHash", 1)
-				mockDB.AssertNumberOfCalls(t, "InsertOnDemandDataset", 0)
-
-				mockDB.AssertNumberOfCalls(t, "Commit", 0)
-				mockDB.AssertNumberOfCalls(t, "Rollback", 1)
 			},
 			expectedError:       connect.NewError(connect.CodeInvalidArgument, errors.New("can not combine images from datasets with different terms of use")),
 			expectedNilResponse: true,
@@ -884,18 +800,13 @@ func TestRequestDatasetCreation(t *testing.T) {
 			mockDodMetadataFileHandlerOn: func() *mockDodMetadataFileHandler {
 				return new(mockDodMetadataFileHandler)
 			},
-			mockDodMetadataFileHandlerAssert: func(t *testing.T, mockDmfh *mockDodMetadataFileHandler) {
-				mockDmfh.AssertNumberOfCalls(t, "RegisterOnDemandDataset", 0)
-			},
 			mockDatabaseOn: func() *mockDatabase {
 				mockDB := &mockDatabase{}
 				expectedImageHash := hashImageAccessions([]string{"image_1", "image_2", "image_3"})
-				mockDB.On("GetOnDemandDatasetAccessionFromImageAccessionsHash", expectedImageHash).Return("existing_id", nil)
+				mockDB.On("GetOnDemandDatasetAccessionFromImageAccessionsHash", expectedImageHash).Return("existing_id", nil).Once()
+				mockDB.On("InsertOnDemandDatasetRequest", "unit_test_user", "existing_id", "").Return(nil).Once()
 
 				return mockDB
-			},
-			mockDatabaseAssert: func(t *testing.T, mockDB *mockDatabase) {
-				mockDB.AssertNumberOfCalls(t, "GetOnDemandDatasetAccessionFromImageAccessionsHash", 1)
 			},
 			expectedError:       nil,
 			expectedNilResponse: false,
@@ -915,8 +826,8 @@ func TestRequestDatasetCreation(t *testing.T) {
 			assert.Equal(t, tc.expectedError, err)
 			assert.Equal(t, tc.expectedNilResponse, rsp == nil)
 
-			tc.mockDatabaseAssert(t, mockDB)
-			tc.mockDodMetadataFileHandlerAssert(t, mockDmfh)
+			mockDB.AssertExpectations(t)
+			mockDmfh.AssertExpectations(t)
 		})
 	}
 }
@@ -972,7 +883,7 @@ func TestGetOnDemandDatasetStatus(t *testing.T) {
 			},
 			expectedError: nil,
 			expectedResponse: connect.NewResponse(&dodservice.GetOnDemandDatasetStatusResponse{
-				Status: dodservice.GetOnDemandDatasetStatusResponse_STATUS_RELEASED,
+				Status: dodservice.OnDemandDataset_STATUS_RELEASED,
 			}),
 		}, {
 			name:                     "found_and_pending",
@@ -988,7 +899,7 @@ func TestGetOnDemandDatasetStatus(t *testing.T) {
 			},
 			expectedError: nil,
 			expectedResponse: connect.NewResponse(&dodservice.GetOnDemandDatasetStatusResponse{
-				Status: dodservice.GetOnDemandDatasetStatusResponse_STATUS_CREATING,
+				Status: dodservice.OnDemandDataset_STATUS_CREATING,
 			}),
 		},
 	} {
@@ -997,7 +908,10 @@ func TestGetOnDemandDatasetStatus(t *testing.T) {
 
 			database.RegisterDatabase(mockDB)
 			testDodServiceImpl := &serviceImpl{}
-			rsp, err := testDodServiceImpl.GetOnDemandDatasetStatus(context.Background(), connect.NewRequest(&dodservice.GetOnDemandDatasetStatusRequest{OnDemandDatasetAccession: tc.onDemandDatasetAccession}))
+			testToken := jwt.New()
+			_ = testToken.Set("sub", "unit_test_user")
+			ctx := authn.SetInfo(context.Background(), testToken)
+			rsp, err := testDodServiceImpl.GetOnDemandDatasetStatus(ctx, connect.NewRequest(&dodservice.GetOnDemandDatasetStatusRequest{OnDemandDatasetAccession: tc.onDemandDatasetAccession}))
 			assert.Equal(t, tc.expectedError, err)
 			assert.Equal(t, tc.expectedResponse, rsp)
 

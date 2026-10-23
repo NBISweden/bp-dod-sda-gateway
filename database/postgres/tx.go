@@ -75,3 +75,11 @@ func (tx *pgTx) GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx context.C
 func (tx *pgTx) GetOnDemandDatasetRemsMetadata(ctx context.Context, onDemandDatasetAccession string) (*metadata_models.RemsSet, error) {
 	return tx.getOnDemandDatasetRemsMetadata(ctx, tx.tx, onDemandDatasetAccession)
 }
+
+func (tx *pgTx) InsertOnDemandDatasetRequest(ctx context.Context, user, datasetAccession, label string) error {
+	return tx.insertOnDemandDatasetRequest(ctx, tx.tx, user, datasetAccession, label)
+}
+
+func (tx *pgTx) ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error) {
+	return tx.listUsersOnDemandDatasetRequests(ctx, tx.tx, user)
+}

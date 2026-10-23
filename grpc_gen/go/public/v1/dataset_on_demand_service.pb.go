@@ -9,6 +9,7 @@ package v1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -21,60 +22,65 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type GetOnDemandDatasetStatusResponse_Status int32
+type OnDemandDataset_Status int32
 
 const (
-	GetOnDemandDatasetStatusResponse_STATUS_INVALID  GetOnDemandDatasetStatusResponse_Status = 0
-	GetOnDemandDatasetStatusResponse_STATUS_CREATING GetOnDemandDatasetStatusResponse_Status = 1
-	GetOnDemandDatasetStatusResponse_STATUS_RELEASED GetOnDemandDatasetStatusResponse_Status = 2
+	OnDemandDataset_STATUS_INVALID  OnDemandDataset_Status = 0
+	OnDemandDataset_STATUS_CREATING OnDemandDataset_Status = 1
+	OnDemandDataset_STATUS_RELEASED OnDemandDataset_Status = 2
 )
 
-// Enum value maps for GetOnDemandDatasetStatusResponse_Status.
+// Enum value maps for OnDemandDataset_Status.
 var (
-	GetOnDemandDatasetStatusResponse_Status_name = map[int32]string{
+	OnDemandDataset_Status_name = map[int32]string{
 		0: "STATUS_INVALID",
 		1: "STATUS_CREATING",
 		2: "STATUS_RELEASED",
 	}
-	GetOnDemandDatasetStatusResponse_Status_value = map[string]int32{
+	OnDemandDataset_Status_value = map[string]int32{
 		"STATUS_INVALID":  0,
 		"STATUS_CREATING": 1,
 		"STATUS_RELEASED": 2,
 	}
 )
 
-func (x GetOnDemandDatasetStatusResponse_Status) Enum() *GetOnDemandDatasetStatusResponse_Status {
-	p := new(GetOnDemandDatasetStatusResponse_Status)
+func (x OnDemandDataset_Status) Enum() *OnDemandDataset_Status {
+	p := new(OnDemandDataset_Status)
 	*p = x
 	return p
 }
 
-func (x GetOnDemandDatasetStatusResponse_Status) String() string {
+func (x OnDemandDataset_Status) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (GetOnDemandDatasetStatusResponse_Status) Descriptor() protoreflect.EnumDescriptor {
+func (OnDemandDataset_Status) Descriptor() protoreflect.EnumDescriptor {
 	return file_public_v1_dataset_on_demand_service_proto_enumTypes[0].Descriptor()
 }
 
-func (GetOnDemandDatasetStatusResponse_Status) Type() protoreflect.EnumType {
+func (OnDemandDataset_Status) Type() protoreflect.EnumType {
 	return &file_public_v1_dataset_on_demand_service_proto_enumTypes[0]
 }
 
-func (x GetOnDemandDatasetStatusResponse_Status) Number() protoreflect.EnumNumber {
+func (x OnDemandDataset_Status) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use GetOnDemandDatasetStatusResponse_Status.Descriptor instead.
-func (GetOnDemandDatasetStatusResponse_Status) EnumDescriptor() ([]byte, []int) {
-	return file_public_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{3, 0}
+// Deprecated: Use OnDemandDataset_Status.Descriptor instead.
+func (OnDemandDataset_Status) EnumDescriptor() ([]byte, []int) {
+	return file_public_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{4, 0}
 }
 
 type RequestDatasetCreationRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	ImageAccessions []string               `protobuf:"bytes,1,rep,name=image_accessions,json=imageAccessions,proto3" json:"image_accessions,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The accession id of the images to request to combine into a dataset
+	ImageAccessions []string `protobuf:"bytes,1,rep,name=image_accessions,json=imageAccessions,proto3" json:"image_accessions,omitempty"`
+	// Optional: A user specific description of the dataset
+	// For example the query which resulted in the requested images.
+	// Main purpose is just for the user to be able to differentiate the datasets in the ListMyOnDemandDatasets response
+	Label         string `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RequestDatasetCreationRequest) Reset() {
@@ -112,6 +118,13 @@ func (x *RequestDatasetCreationRequest) GetImageAccessions() []string {
 		return x.ImageAccessions
 	}
 	return nil
+}
+
+func (x *RequestDatasetCreationRequest) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
 }
 
 type RequestDatasetCreationResponse struct {
@@ -203,8 +216,8 @@ func (x *GetOnDemandDatasetStatusRequest) GetOnDemandDatasetAccession() string {
 }
 
 type GetOnDemandDatasetStatusResponse struct {
-	state         protoimpl.MessageState                  `protogen:"open.v1"`
-	Status        GetOnDemandDatasetStatusResponse_Status `protobuf:"varint,1,opt,name=status,proto3,enum=dataset_on_demand.GetOnDemandDatasetStatusResponse_Status" json:"status,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        OnDemandDataset_Status `protobuf:"varint,1,opt,name=status,proto3,enum=dataset_on_demand.OnDemandDataset_Status" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -239,33 +252,191 @@ func (*GetOnDemandDatasetStatusResponse) Descriptor() ([]byte, []int) {
 	return file_public_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *GetOnDemandDatasetStatusResponse) GetStatus() GetOnDemandDatasetStatusResponse_Status {
+func (x *GetOnDemandDatasetStatusResponse) GetStatus() OnDemandDataset_Status {
 	if x != nil {
 		return x.Status
 	}
-	return GetOnDemandDatasetStatusResponse_STATUS_INVALID
+	return OnDemandDataset_STATUS_INVALID
+}
+
+type OnDemandDataset struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Accession     string                 `protobuf:"bytes,1,opt,name=accession,proto3" json:"accession,omitempty"`
+	Status        OnDemandDataset_Status `protobuf:"varint,2,opt,name=status,proto3,enum=dataset_on_demand.OnDemandDataset_Status" json:"status,omitempty"`
+	RequestedAt   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=requested_at,json=requestedAt,proto3" json:"requested_at,omitempty"`
+	Label         string                 `protobuf:"bytes,4,opt,name=label,proto3" json:"label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OnDemandDataset) Reset() {
+	*x = OnDemandDataset{}
+	mi := &file_public_v1_dataset_on_demand_service_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OnDemandDataset) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OnDemandDataset) ProtoMessage() {}
+
+func (x *OnDemandDataset) ProtoReflect() protoreflect.Message {
+	mi := &file_public_v1_dataset_on_demand_service_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OnDemandDataset.ProtoReflect.Descriptor instead.
+func (*OnDemandDataset) Descriptor() ([]byte, []int) {
+	return file_public_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *OnDemandDataset) GetAccession() string {
+	if x != nil {
+		return x.Accession
+	}
+	return ""
+}
+
+func (x *OnDemandDataset) GetStatus() OnDemandDataset_Status {
+	if x != nil {
+		return x.Status
+	}
+	return OnDemandDataset_STATUS_INVALID
+}
+
+func (x *OnDemandDataset) GetRequestedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RequestedAt
+	}
+	return nil
+}
+
+func (x *OnDemandDataset) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+type ListMyOnDemandDatasetsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMyOnDemandDatasetsRequest) Reset() {
+	*x = ListMyOnDemandDatasetsRequest{}
+	mi := &file_public_v1_dataset_on_demand_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyOnDemandDatasetsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyOnDemandDatasetsRequest) ProtoMessage() {}
+
+func (x *ListMyOnDemandDatasetsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_public_v1_dataset_on_demand_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyOnDemandDatasetsRequest.ProtoReflect.Descriptor instead.
+func (*ListMyOnDemandDatasetsRequest) Descriptor() ([]byte, []int) {
+	return file_public_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{5}
+}
+
+type ListMyOnDemandDatasetsResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	OnDemandDatasets []*OnDemandDataset     `protobuf:"bytes,1,rep,name=on_demand_datasets,json=onDemandDatasets,proto3" json:"on_demand_datasets,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ListMyOnDemandDatasetsResponse) Reset() {
+	*x = ListMyOnDemandDatasetsResponse{}
+	mi := &file_public_v1_dataset_on_demand_service_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyOnDemandDatasetsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyOnDemandDatasetsResponse) ProtoMessage() {}
+
+func (x *ListMyOnDemandDatasetsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_public_v1_dataset_on_demand_service_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyOnDemandDatasetsResponse.ProtoReflect.Descriptor instead.
+func (*ListMyOnDemandDatasetsResponse) Descriptor() ([]byte, []int) {
+	return file_public_v1_dataset_on_demand_service_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ListMyOnDemandDatasetsResponse) GetOnDemandDatasets() []*OnDemandDataset {
+	if x != nil {
+		return x.OnDemandDatasets
+	}
+	return nil
 }
 
 var File_public_v1_dataset_on_demand_service_proto protoreflect.FileDescriptor
 
 const file_public_v1_dataset_on_demand_service_proto_rawDesc = "" +
 	"\n" +
-	")public/v1/dataset_on_demand_service.proto\x12\x11dataset_on_demand\"J\n" +
+	")public/v1/dataset_on_demand_service.proto\x12\x11dataset_on_demand\x1a\x1fgoogle/protobuf/timestamp.proto\"`\n" +
 	"\x1dRequestDatasetCreationRequest\x12)\n" +
-	"\x10image_accessions\x18\x01 \x03(\tR\x0fimageAccessions\"_\n" +
+	"\x10image_accessions\x18\x01 \x03(\tR\x0fimageAccessions\x12\x14\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\"_\n" +
 	"\x1eRequestDatasetCreationResponse\x12=\n" +
 	"\x1bon_demand_dataset_accession\x18\x01 \x01(\tR\x18onDemandDatasetAccession\"`\n" +
 	"\x1fGetOnDemandDatasetStatusRequest\x12=\n" +
-	"\x1bon_demand_dataset_accession\x18\x01 \x01(\tR\x18onDemandDatasetAccession\"\xbe\x01\n" +
-	" GetOnDemandDatasetStatusResponse\x12R\n" +
-	"\x06status\x18\x01 \x01(\x0e2:.dataset_on_demand.GetOnDemandDatasetStatusResponse.StatusR\x06status\"F\n" +
+	"\x1bon_demand_dataset_accession\x18\x01 \x01(\tR\x18onDemandDatasetAccession\"e\n" +
+	" GetOnDemandDatasetStatusResponse\x12A\n" +
+	"\x06status\x18\x01 \x01(\x0e2).dataset_on_demand.OnDemandDataset.StatusR\x06status\"\x8f\x02\n" +
+	"\x0fOnDemandDataset\x12\x1c\n" +
+	"\taccession\x18\x01 \x01(\tR\taccession\x12A\n" +
+	"\x06status\x18\x02 \x01(\x0e2).dataset_on_demand.OnDemandDataset.StatusR\x06status\x12=\n" +
+	"\frequested_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\vrequestedAt\x12\x14\n" +
+	"\x05label\x18\x04 \x01(\tR\x05label\"F\n" +
 	"\x06Status\x12\x12\n" +
 	"\x0eSTATUS_INVALID\x10\x00\x12\x13\n" +
 	"\x0fSTATUS_CREATING\x10\x01\x12\x13\n" +
-	"\x0fSTATUS_RELEASED\x10\x022\x9d\x02\n" +
+	"\x0fSTATUS_RELEASED\x10\x02\"\x1f\n" +
+	"\x1dListMyOnDemandDatasetsRequest\"r\n" +
+	"\x1eListMyOnDemandDatasetsResponse\x12P\n" +
+	"\x12on_demand_datasets\x18\x01 \x03(\v2\".dataset_on_demand.OnDemandDatasetR\x10onDemandDatasets2\x9c\x03\n" +
 	"\x16DatasetOnDemandService\x12}\n" +
 	"\x16RequestDatasetCreation\x120.dataset_on_demand.RequestDatasetCreationRequest\x1a1.dataset_on_demand.RequestDatasetCreationResponse\x12\x83\x01\n" +
-	"\x18GetOnDemandDatasetStatus\x122.dataset_on_demand.GetOnDemandDatasetStatusRequest\x1a3.dataset_on_demand.GetOnDemandDatasetStatusResponseB\xcf\x01\n" +
+	"\x18GetOnDemandDatasetStatus\x122.dataset_on_demand.GetOnDemandDatasetStatusRequest\x1a3.dataset_on_demand.GetOnDemandDatasetStatusResponse\x12}\n" +
+	"\x16ListMyOnDemandDatasets\x120.dataset_on_demand.ListMyOnDemandDatasetsRequest\x1a1.dataset_on_demand.ListMyOnDemandDatasetsResponseB\xcf\x01\n" +
 	"\x15com.dataset_on_demandB\x1bDatasetOnDemandServiceProtoP\x01Z=github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/public/v1\xa2\x02\x03DXX\xaa\x02\x0fDatasetOnDemand\xca\x02\x0fDatasetOnDemand\xe2\x02\x1bDatasetOnDemand\\GPBMetadata\xea\x02\x0fDatasetOnDemandb\x06proto3"
 
 var (
@@ -281,25 +452,34 @@ func file_public_v1_dataset_on_demand_service_proto_rawDescGZIP() []byte {
 }
 
 var file_public_v1_dataset_on_demand_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_public_v1_dataset_on_demand_service_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_public_v1_dataset_on_demand_service_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_public_v1_dataset_on_demand_service_proto_goTypes = []any{
-	(GetOnDemandDatasetStatusResponse_Status)(0), // 0: dataset_on_demand.GetOnDemandDatasetStatusResponse.Status
-	(*RequestDatasetCreationRequest)(nil),        // 1: dataset_on_demand.RequestDatasetCreationRequest
-	(*RequestDatasetCreationResponse)(nil),       // 2: dataset_on_demand.RequestDatasetCreationResponse
-	(*GetOnDemandDatasetStatusRequest)(nil),      // 3: dataset_on_demand.GetOnDemandDatasetStatusRequest
-	(*GetOnDemandDatasetStatusResponse)(nil),     // 4: dataset_on_demand.GetOnDemandDatasetStatusResponse
+	(OnDemandDataset_Status)(0),              // 0: dataset_on_demand.OnDemandDataset.Status
+	(*RequestDatasetCreationRequest)(nil),    // 1: dataset_on_demand.RequestDatasetCreationRequest
+	(*RequestDatasetCreationResponse)(nil),   // 2: dataset_on_demand.RequestDatasetCreationResponse
+	(*GetOnDemandDatasetStatusRequest)(nil),  // 3: dataset_on_demand.GetOnDemandDatasetStatusRequest
+	(*GetOnDemandDatasetStatusResponse)(nil), // 4: dataset_on_demand.GetOnDemandDatasetStatusResponse
+	(*OnDemandDataset)(nil),                  // 5: dataset_on_demand.OnDemandDataset
+	(*ListMyOnDemandDatasetsRequest)(nil),    // 6: dataset_on_demand.ListMyOnDemandDatasetsRequest
+	(*ListMyOnDemandDatasetsResponse)(nil),   // 7: dataset_on_demand.ListMyOnDemandDatasetsResponse
+	(*timestamppb.Timestamp)(nil),            // 8: google.protobuf.Timestamp
 }
 var file_public_v1_dataset_on_demand_service_proto_depIdxs = []int32{
-	0, // 0: dataset_on_demand.GetOnDemandDatasetStatusResponse.status:type_name -> dataset_on_demand.GetOnDemandDatasetStatusResponse.Status
-	1, // 1: dataset_on_demand.DatasetOnDemandService.RequestDatasetCreation:input_type -> dataset_on_demand.RequestDatasetCreationRequest
-	3, // 2: dataset_on_demand.DatasetOnDemandService.GetOnDemandDatasetStatus:input_type -> dataset_on_demand.GetOnDemandDatasetStatusRequest
-	2, // 3: dataset_on_demand.DatasetOnDemandService.RequestDatasetCreation:output_type -> dataset_on_demand.RequestDatasetCreationResponse
-	4, // 4: dataset_on_demand.DatasetOnDemandService.GetOnDemandDatasetStatus:output_type -> dataset_on_demand.GetOnDemandDatasetStatusResponse
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // 0: dataset_on_demand.GetOnDemandDatasetStatusResponse.status:type_name -> dataset_on_demand.OnDemandDataset.Status
+	0, // 1: dataset_on_demand.OnDemandDataset.status:type_name -> dataset_on_demand.OnDemandDataset.Status
+	8, // 2: dataset_on_demand.OnDemandDataset.requested_at:type_name -> google.protobuf.Timestamp
+	5, // 3: dataset_on_demand.ListMyOnDemandDatasetsResponse.on_demand_datasets:type_name -> dataset_on_demand.OnDemandDataset
+	1, // 4: dataset_on_demand.DatasetOnDemandService.RequestDatasetCreation:input_type -> dataset_on_demand.RequestDatasetCreationRequest
+	3, // 5: dataset_on_demand.DatasetOnDemandService.GetOnDemandDatasetStatus:input_type -> dataset_on_demand.GetOnDemandDatasetStatusRequest
+	6, // 6: dataset_on_demand.DatasetOnDemandService.ListMyOnDemandDatasets:input_type -> dataset_on_demand.ListMyOnDemandDatasetsRequest
+	2, // 7: dataset_on_demand.DatasetOnDemandService.RequestDatasetCreation:output_type -> dataset_on_demand.RequestDatasetCreationResponse
+	4, // 8: dataset_on_demand.DatasetOnDemandService.GetOnDemandDatasetStatus:output_type -> dataset_on_demand.GetOnDemandDatasetStatusResponse
+	7, // 9: dataset_on_demand.DatasetOnDemandService.ListMyOnDemandDatasets:output_type -> dataset_on_demand.ListMyOnDemandDatasetsResponse
+	7, // [7:10] is the sub-list for method output_type
+	4, // [4:7] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_public_v1_dataset_on_demand_service_proto_init() }
@@ -313,7 +493,7 @@ func file_public_v1_dataset_on_demand_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_public_v1_dataset_on_demand_service_proto_rawDesc), len(file_public_v1_dataset_on_demand_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   4,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

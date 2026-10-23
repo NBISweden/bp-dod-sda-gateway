@@ -136,6 +136,18 @@ func (m *mockDatabase) SetOnDemandDatasetReleased(_ context.Context, datasetAcce
 	return args.Error(0)
 }
 
+func (m *mockDatabase) InsertOnDemandDatasetRequest(_ context.Context, user, datasetAccession, label string) error {
+	args := m.Called(user, datasetAccession, label)
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error) {
+	args := m.Called(user)
+
+	return args.Get(0).([]*models.OnDemandDatasetRequest), args.Error(1)
+}
+
 func (m *mockOriginDatasetLoader) UnmarshalFileToXml(_ context.Context, file *origin_dataset_file_loader.FileInfo, dst any) error {
 	args := m.Called(file.DatasetAccession, file.MetadataFileType.String())
 

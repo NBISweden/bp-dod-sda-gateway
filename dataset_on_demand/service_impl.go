@@ -19,6 +19,7 @@ import (
 	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"go.opentelemetry.io/otel/attribute"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type serviceImpl struct{}
@@ -51,6 +52,17 @@ func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Req
 	}
 
 	if existingOnDemandDatasetAccession != "" {
+		if err := database.InsertOnDemandDatasetRequest(ctx, user, existingOnDemandDatasetAccession, c.Msg.GetLabel()); err != nil {
+			switch {
+			case errors.Is(err, database.ErrAlreadyExists):
+				return nil, connect.NewError(connect.CodeAlreadyExists, nil)
+			default:
+				span.Error("failed to insert on demand dataset request", err)
+
+				return nil, connect.NewError(connect.CodeInternal, nil)
+			}
+		}
+
 		return connect.NewResponse(&dodservice.RequestDatasetCreationResponse{
 			OnDemandDatasetAccession: existingOnDemandDatasetAccession,
 		}), nil
@@ -153,7 +165,6 @@ func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Req
 	}
 
 	onDemandDataset := buildOnDemandDataset(ctx, originDatasets, originDatasetImages)
-	onDemandDataset.RequestedByUser = user
 	span.SetAttributes(attribute.String("on-demand-dataset-accession", onDemandDataset.Accession))
 
 	if err := tx.InsertOnDemandDataset(ctx, onDemandDataset, imageAccessionHash); err != nil {
@@ -170,6 +181,12 @@ func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Req
 				return nil, connect.NewError(connect.CodeInternal, nil)
 			}
 		}
+	}
+
+	if err := database.InsertOnDemandDatasetRequest(ctx, user, onDemandDataset.Accession, c.Msg.GetLabel()); err != nil {
+		span.Error("failed to insert on demand dataset request", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
 	if err := on_demand_dataset_metadata_file_handler.RegisterOnDemandDataset(ctx, onDemandDataset); err != nil {
@@ -193,7 +210,18 @@ func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Req
 }
 
 func (d *serviceImpl) GetOnDemandDatasetStatus(ctx context.Context, c *connect.Request[dodservice.GetOnDemandDatasetStatusRequest]) (*connect.Response[dodservice.GetOnDemandDatasetStatusResponse], error) {
-	ctx, span := observability.StartSpan(ctx, "GetOnDemandDatasetStatus", attribute.String("accession", c.Msg.GetOnDemandDatasetAccession()))
+	token, ok := authn.GetInfo(ctx).(jwt.Token)
+	if !ok || token.Subject() == "" {
+		slog.Error("could not find authn value in context")
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	ctx, span := observability.StartSpan(ctx,
+		"GetOnDemandDatasetStatus",
+		attribute.String("accession", c.Msg.GetOnDemandDatasetAccession()),
+		attribute.String("user", token.Subject()),
+	)
 	defer span.End()
 
 	if c.Msg.GetOnDemandDatasetAccession() == "" {
@@ -211,11 +239,11 @@ func (d *serviceImpl) GetOnDemandDatasetStatus(ctx context.Context, c *connect.R
 	}
 
 	res := dodservice.GetOnDemandDatasetStatusResponse{
-		Status: dodservice.GetOnDemandDatasetStatusResponse_STATUS_CREATING,
+		Status: dodservice.OnDemandDataset_STATUS_CREATING,
 	}
 
 	if onDemandDatasetReleased {
-		res.Status = dodservice.GetOnDemandDatasetStatusResponse_STATUS_RELEASED
+		res.Status = dodservice.OnDemandDataset_STATUS_RELEASED
 	}
 
 	return connect.NewResponse(&res), nil
@@ -242,4 +270,43 @@ func hashImageAccessions(ids []string) string {
 	}
 
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (d *serviceImpl) ListMyOnDemandDatasets(ctx context.Context, c *connect.Request[dodservice.ListMyOnDemandDatasetsRequest]) (*connect.Response[dodservice.ListMyOnDemandDatasetsResponse], error) {
+	token, ok := authn.GetInfo(ctx).(jwt.Token)
+	if !ok || token.Subject() == "" {
+		slog.Error("could not find authn value in context")
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	ctx, span := observability.StartSpan(ctx, "ListMyOnDemandDatasets",
+		attribute.String("user", token.Subject()),
+	)
+	defer span.End()
+
+	onDemandDatasetRequest, err := database.ListUsersOnDemandDatasetRequests(ctx, token.Subject())
+	if err != nil {
+		span.Error("failed to check if on demand dataset is released", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	res := dodservice.ListMyOnDemandDatasetsResponse{
+		OnDemandDatasets: make([]*dodservice.OnDemandDataset, len(onDemandDatasetRequest)),
+	}
+
+	for i, oddr := range onDemandDatasetRequest {
+		res.OnDemandDatasets[i] = &dodservice.OnDemandDataset{
+			Accession:   oddr.OnDemandDatasetAccession,
+			Status:      dodservice.OnDemandDataset_STATUS_CREATING,
+			RequestedAt: timestamppb.New(oddr.RequestedAt),
+			Label:       oddr.Label,
+		}
+		if oddr.Released {
+			res.OnDemandDatasets[i].Status = dodservice.OnDemandDataset_STATUS_RELEASED
+		}
+	}
+
+	return connect.NewResponse(&res), nil
 }

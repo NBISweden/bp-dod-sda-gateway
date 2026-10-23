@@ -39,6 +39,9 @@ const (
 	// DatasetOnDemandServiceGetOnDemandDatasetStatusProcedure is the fully-qualified name of the
 	// DatasetOnDemandService's GetOnDemandDatasetStatus RPC.
 	DatasetOnDemandServiceGetOnDemandDatasetStatusProcedure = "/dataset_on_demand.DatasetOnDemandService/GetOnDemandDatasetStatus"
+	// DatasetOnDemandServiceListMyOnDemandDatasetsProcedure is the fully-qualified name of the
+	// DatasetOnDemandService's ListMyOnDemandDatasets RPC.
+	DatasetOnDemandServiceListMyOnDemandDatasetsProcedure = "/dataset_on_demand.DatasetOnDemandService/ListMyOnDemandDatasets"
 )
 
 // DatasetOnDemandServiceClient is a client for the dataset_on_demand.DatasetOnDemandService
@@ -46,6 +49,7 @@ const (
 type DatasetOnDemandServiceClient interface {
 	RequestDatasetCreation(context.Context, *connect.Request[v1.RequestDatasetCreationRequest]) (*connect.Response[v1.RequestDatasetCreationResponse], error)
 	GetOnDemandDatasetStatus(context.Context, *connect.Request[v1.GetOnDemandDatasetStatusRequest]) (*connect.Response[v1.GetOnDemandDatasetStatusResponse], error)
+	ListMyOnDemandDatasets(context.Context, *connect.Request[v1.ListMyOnDemandDatasetsRequest]) (*connect.Response[v1.ListMyOnDemandDatasetsResponse], error)
 }
 
 // NewDatasetOnDemandServiceClient constructs a client for the
@@ -71,6 +75,12 @@ func NewDatasetOnDemandServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(datasetOnDemandServiceMethods.ByName("GetOnDemandDatasetStatus")),
 			connect.WithClientOptions(opts...),
 		),
+		listMyOnDemandDatasets: connect.NewClient[v1.ListMyOnDemandDatasetsRequest, v1.ListMyOnDemandDatasetsResponse](
+			httpClient,
+			baseURL+DatasetOnDemandServiceListMyOnDemandDatasetsProcedure,
+			connect.WithSchema(datasetOnDemandServiceMethods.ByName("ListMyOnDemandDatasets")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -78,6 +88,7 @@ func NewDatasetOnDemandServiceClient(httpClient connect.HTTPClient, baseURL stri
 type datasetOnDemandServiceClient struct {
 	requestDatasetCreation   *connect.Client[v1.RequestDatasetCreationRequest, v1.RequestDatasetCreationResponse]
 	getOnDemandDatasetStatus *connect.Client[v1.GetOnDemandDatasetStatusRequest, v1.GetOnDemandDatasetStatusResponse]
+	listMyOnDemandDatasets   *connect.Client[v1.ListMyOnDemandDatasetsRequest, v1.ListMyOnDemandDatasetsResponse]
 }
 
 // RequestDatasetCreation calls dataset_on_demand.DatasetOnDemandService.RequestDatasetCreation.
@@ -90,11 +101,17 @@ func (c *datasetOnDemandServiceClient) GetOnDemandDatasetStatus(ctx context.Cont
 	return c.getOnDemandDatasetStatus.CallUnary(ctx, req)
 }
 
+// ListMyOnDemandDatasets calls dataset_on_demand.DatasetOnDemandService.ListMyOnDemandDatasets.
+func (c *datasetOnDemandServiceClient) ListMyOnDemandDatasets(ctx context.Context, req *connect.Request[v1.ListMyOnDemandDatasetsRequest]) (*connect.Response[v1.ListMyOnDemandDatasetsResponse], error) {
+	return c.listMyOnDemandDatasets.CallUnary(ctx, req)
+}
+
 // DatasetOnDemandServiceHandler is an implementation of the
 // dataset_on_demand.DatasetOnDemandService service.
 type DatasetOnDemandServiceHandler interface {
 	RequestDatasetCreation(context.Context, *connect.Request[v1.RequestDatasetCreationRequest]) (*connect.Response[v1.RequestDatasetCreationResponse], error)
 	GetOnDemandDatasetStatus(context.Context, *connect.Request[v1.GetOnDemandDatasetStatusRequest]) (*connect.Response[v1.GetOnDemandDatasetStatusResponse], error)
+	ListMyOnDemandDatasets(context.Context, *connect.Request[v1.ListMyOnDemandDatasetsRequest]) (*connect.Response[v1.ListMyOnDemandDatasetsResponse], error)
 }
 
 // NewDatasetOnDemandServiceHandler builds an HTTP handler from the service implementation. It
@@ -116,12 +133,20 @@ func NewDatasetOnDemandServiceHandler(svc DatasetOnDemandServiceHandler, opts ..
 		connect.WithSchema(datasetOnDemandServiceMethods.ByName("GetOnDemandDatasetStatus")),
 		connect.WithHandlerOptions(opts...),
 	)
+	datasetOnDemandServiceListMyOnDemandDatasetsHandler := connect.NewUnaryHandler(
+		DatasetOnDemandServiceListMyOnDemandDatasetsProcedure,
+		svc.ListMyOnDemandDatasets,
+		connect.WithSchema(datasetOnDemandServiceMethods.ByName("ListMyOnDemandDatasets")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/dataset_on_demand.DatasetOnDemandService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case DatasetOnDemandServiceRequestDatasetCreationProcedure:
 			datasetOnDemandServiceRequestDatasetCreationHandler.ServeHTTP(w, r)
 		case DatasetOnDemandServiceGetOnDemandDatasetStatusProcedure:
 			datasetOnDemandServiceGetOnDemandDatasetStatusHandler.ServeHTTP(w, r)
+		case DatasetOnDemandServiceListMyOnDemandDatasetsProcedure:
+			datasetOnDemandServiceListMyOnDemandDatasetsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -137,4 +162,8 @@ func (UnimplementedDatasetOnDemandServiceHandler) RequestDatasetCreation(context
 
 func (UnimplementedDatasetOnDemandServiceHandler) GetOnDemandDatasetStatus(context.Context, *connect.Request[v1.GetOnDemandDatasetStatusRequest]) (*connect.Response[v1.GetOnDemandDatasetStatusResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("dataset_on_demand.DatasetOnDemandService.GetOnDemandDatasetStatus is not implemented"))
+}
+
+func (UnimplementedDatasetOnDemandServiceHandler) ListMyOnDemandDatasets(context.Context, *connect.Request[v1.ListMyOnDemandDatasetsRequest]) (*connect.Response[v1.ListMyOnDemandDatasetsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("dataset_on_demand.DatasetOnDemandService.ListMyOnDemandDatasets is not implemented"))
 }

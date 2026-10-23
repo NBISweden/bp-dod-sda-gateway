@@ -47,6 +47,9 @@ type functions interface {
 	IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error)
 
 	SetOnDemandDatasetReleased(ctx context.Context, datasetAccession string) error
+
+	InsertOnDemandDatasetRequest(ctx context.Context, user, datasetAccession, label string) error
+	ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error)
 }
 
 var db Database
@@ -87,4 +90,12 @@ func IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) 
 
 func GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, error) {
 	return db.GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx, imageAccessionHash)
+}
+
+func InsertOnDemandDatasetRequest(ctx context.Context, user, datasetAccession, label string) error {
+	return db.InsertOnDemandDatasetRequest(ctx, user, datasetAccession, label)
+}
+
+func ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error) {
+	return db.ListUsersOnDemandDatasetRequests(ctx, user)
 }

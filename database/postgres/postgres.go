@@ -258,3 +258,11 @@ func (db *pgDb) GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx context.C
 func (db *pgDb) GetOnDemandDatasetRemsMetadata(ctx context.Context, onDemandDatasetAccession string) (*metadata_models.RemsSet, error) {
 	return db.getOnDemandDatasetRemsMetadata(ctx, nil, onDemandDatasetAccession)
 }
+
+func (db *pgDb) InsertOnDemandDatasetRequest(ctx context.Context, user, datasetAccession, label string) error {
+	return db.insertOnDemandDatasetRequest(ctx, nil, user, datasetAccession, label)
+}
+
+func (db *pgDb) ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error) {
+	return db.listUsersOnDemandDatasetRequests(ctx, nil, user)
+}

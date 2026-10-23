@@ -14,8 +14,8 @@ const insertOnDemandDatasetMetadataFileQuery = "insertOnDemandDatasetMetadataFil
 const insertOnDemandDatasetCreatedFromOriginQuery = "insertOnDemandDatasetCreatedFromOrigin"
 
 func init() {
-	queries[insertOnDemandDatasetQuery] = `INSERT INTO on_demand_dataset (accession, requested_by_user, image_accessions_hash)
-VALUES($1, $2, $3);`
+	queries[insertOnDemandDatasetQuery] = `INSERT INTO on_demand_dataset (accession, image_accessions_hash)
+VALUES($1, $2);`
 
 	queries[insertOnDemandDatasetMetadataFileQuery] = `INSERT INTO on_demand_dataset_metadata_file (on_demand_dataset_accession, type, accession, xml_content)
 VALUES($1, $2, $3, $4);`
@@ -39,7 +39,6 @@ func (db *pgDb) insertOnDemandDataset(ctx context.Context, tx *sql.Tx, onDemandD
 
 	if _, err := insertDatasetStmt.ExecContext(ctx,
 		onDemandDataset.Accession,
-		onDemandDataset.RequestedByUser,
 		imageAccessionHash,
 	); err != nil {
 		return fmt.Errorf("failed to insert dod dataset: %w", err)

@@ -27,13 +27,22 @@ CREATE TABLE IF NOT EXISTS image_file
   base_file_name    TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS on_demand_dataset_request
+(
+  requested_by_user           TEXT                     NOT NULL,
+  on_demand_dataset_accession TEXT REFERENCES on_demand_dataset (accession),
+  requested_at                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
+  label                       TEXT,
+
+  CONSTRAINT unique_requested_idx UNIQUE(requested_by_user, on_demand_dataset_accession)
+);
+
 CREATE TABLE IF NOT EXISTS on_demand_dataset
 (
-  accession         TEXT PRIMARY KEY,
-  requested_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
-  requested_by_user TEXT                     NOT NULL,
-  released_at       TIMESTAMP WITH TIME ZONE,
-  image_accessions_hash TEXT NOT NULL UNIQUE
+  accession             TEXT PRIMARY KEY,
+  created_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
+  released_at           TIMESTAMP WITH TIME ZONE,
+  image_accessions_hash TEXT                     NOT NULL UNIQUE
 );
 
 CREATE TYPE METADATA_TYPE AS ENUM ('annotation','dataset','image','landing_page','observation','observer','organisation','policy','rems','sample','staining');

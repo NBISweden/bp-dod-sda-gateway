@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 )
 
@@ -30,10 +32,15 @@ func (mf *MetadataFile[T]) MetadataFileType() metadata_models.MetadataFileType {
 	return mf.MetadataSet.MetadataFileType()
 }
 
+type OnDemandDatasetRequest struct {
+	OnDemandDatasetAccession string
+	Released                 bool
+	RequestedAt              time.Time
+	Label                    string
+}
 type OnDemandDataset struct {
 	Accession               string
 	OriginDatasetAccessions []string
-	RequestedByUser         string
 
 	DatasetMetadata     MetadataFile[*metadata_models.DatasetSet]
 	ImageMetadata       MetadataFile[*metadata_models.ImageSet]
