@@ -43,13 +43,14 @@ type functions interface {
 	ListOnDemandDatasetImageFiles(ctx context.Context, datasetAccession string) (map[string]map[string]string, error)
 
 	GetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error)
-	GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, error)
+	GetOnDemandDatasetFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, bool, error)
 	IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error)
 
 	SetOnDemandDatasetReleased(ctx context.Context, datasetAccession string) error
 
-	InsertOnDemandDatasetRequest(ctx context.Context, user, datasetAccession, label string) error
+	InsertOnDemandDatasetRequest(ctx context.Context, user, email, datasetAccession, label string) error
 	ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error)
+	ListUserEmailsByDatasetAccession(ctx context.Context, datasetAccession string) ([]string, error)
 }
 
 var db Database
@@ -88,14 +89,17 @@ func IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) 
 	return db.IsOnDemandDatasetReleased(ctx, dodDatasetAccession)
 }
 
-func GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, error) {
-	return db.GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx, imageAccessionHash)
+func GetOnDemandDatasetFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, bool, error) {
+	return db.GetOnDemandDatasetFromImageAccessionsHash(ctx, imageAccessionHash)
 }
 
-func InsertOnDemandDatasetRequest(ctx context.Context, user, datasetAccession, label string) error {
-	return db.InsertOnDemandDatasetRequest(ctx, user, datasetAccession, label)
+func InsertOnDemandDatasetRequest(ctx context.Context, user, email, datasetAccession, label string) error {
+	return db.InsertOnDemandDatasetRequest(ctx, user, email, datasetAccession, label)
 }
 
 func ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error) {
 	return db.ListUsersOnDemandDatasetRequests(ctx, user)
+}
+func ListUserEmailsByDatasetAccession(ctx context.Context, datasetAccession string) ([]string, error) {
+	return db.ListUserEmailsByDatasetAccession(ctx, datasetAccession)
 }

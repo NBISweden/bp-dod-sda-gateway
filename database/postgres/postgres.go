@@ -252,17 +252,21 @@ func (db *pgDb) IsOnDemandDatasetReleased(ctx context.Context, onDemandDatasetAc
 	return db.isOnDemandDatasetReleased(ctx, nil, onDemandDatasetAccession)
 }
 
-func (db *pgDb) GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, error) {
-	return db.getOnDemandDatasetAccessionFromImageAccessions(ctx, nil, imageAccessionHash)
+func (db *pgDb) GetOnDemandDatasetFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, bool, error) {
+	return db.getOnDemandDatasetFromImageAccessionsHash(ctx, nil, imageAccessionHash)
 }
 func (db *pgDb) GetOnDemandDatasetRemsMetadata(ctx context.Context, onDemandDatasetAccession string) (*metadata_models.RemsSet, error) {
 	return db.getOnDemandDatasetRemsMetadata(ctx, nil, onDemandDatasetAccession)
 }
 
-func (db *pgDb) InsertOnDemandDatasetRequest(ctx context.Context, user, datasetAccession, label string) error {
-	return db.insertOnDemandDatasetRequest(ctx, nil, user, datasetAccession, label)
+func (db *pgDb) InsertOnDemandDatasetRequest(ctx context.Context, user, email, datasetAccession, label string) error {
+	return db.insertOnDemandDatasetRequest(ctx, nil, user, email, datasetAccession, label)
 }
 
 func (db *pgDb) ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error) {
 	return db.listUsersOnDemandDatasetRequests(ctx, nil, user)
+}
+
+func (db *pgDb) ListUserEmailsByDatasetAccession(ctx context.Context, datasetAccession string) ([]string, error) {
+	return db.listUserEmailsByDatasetAccession(ctx, nil, datasetAccession)
 }

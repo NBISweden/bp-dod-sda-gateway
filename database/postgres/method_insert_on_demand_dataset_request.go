@@ -13,10 +13,10 @@ import (
 const insertOnDemandDatasetRequestQuery = "insertOnDemandDatasetRequest"
 
 func init() {
-	queries[insertOnDemandDatasetRequestQuery] = `INSERT INTO on_demand_dataset_request (requested_by, on_demand_dataset_accession, label)
-VALUES($1, $2, $3);`
+	queries[insertOnDemandDatasetRequestQuery] = `INSERT INTO on_demand_dataset_request (requested_by, user_email, on_demand_dataset_accession, label)
+VALUES($1, $2, $3, $4);`
 }
-func (db *pgDb) insertOnDemandDatasetRequest(ctx context.Context, tx *sql.Tx, user, datasetAccession, label string) error {
+func (db *pgDb) insertOnDemandDatasetRequest(ctx context.Context, tx *sql.Tx, user, email, datasetAccession, label string) error {
 	stmt, err := db.getPreparedStmt(tx, insertOnDemandDatasetRequestQuery)
 	if err != nil {
 		return err
@@ -24,6 +24,7 @@ func (db *pgDb) insertOnDemandDatasetRequest(ctx context.Context, tx *sql.Tx, us
 
 	if _, err := stmt.ExecContext(ctx,
 		user,
+		email,
 		datasetAccession,
 		label,
 	); err != nil {

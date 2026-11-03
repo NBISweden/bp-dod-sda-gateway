@@ -69,17 +69,21 @@ func (tx *pgTx) SetOnDemandDatasetReleased(ctx context.Context, onDemandDatasetA
 func (tx *pgTx) IsOnDemandDatasetReleased(ctx context.Context, onDemandDatasetAccession string) (bool, error) {
 	return tx.isOnDemandDatasetReleased(ctx, tx.tx, onDemandDatasetAccession)
 }
-func (tx *pgTx) GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, error) {
-	return tx.getOnDemandDatasetAccessionFromImageAccessions(ctx, tx.tx, imageAccessionHash)
+func (tx *pgTx) GetOnDemandDatasetFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, bool, error) {
+	return tx.getOnDemandDatasetFromImageAccessionsHash(ctx, tx.tx, imageAccessionHash)
 }
 func (tx *pgTx) GetOnDemandDatasetRemsMetadata(ctx context.Context, onDemandDatasetAccession string) (*metadata_models.RemsSet, error) {
 	return tx.getOnDemandDatasetRemsMetadata(ctx, tx.tx, onDemandDatasetAccession)
 }
 
-func (tx *pgTx) InsertOnDemandDatasetRequest(ctx context.Context, user, datasetAccession, label string) error {
-	return tx.insertOnDemandDatasetRequest(ctx, tx.tx, user, datasetAccession, label)
+func (tx *pgTx) InsertOnDemandDatasetRequest(ctx context.Context, user, email, datasetAccession, label string) error {
+	return tx.insertOnDemandDatasetRequest(ctx, tx.tx, user, email, datasetAccession, label)
 }
 
 func (tx *pgTx) ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error) {
 	return tx.listUsersOnDemandDatasetRequests(ctx, tx.tx, user)
+}
+
+func (tx *pgTx) ListUserEmailsByDatasetAccession(ctx context.Context, datasetAccession string) ([]string, error) {
+	return tx.listUserEmailsByDatasetAccession(ctx, tx.tx, datasetAccession)
 }

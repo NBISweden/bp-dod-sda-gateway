@@ -1,4 +1,4 @@
-package on_demand_dataset_metadata_file_handler
+package on_demand_dataset_creation_handler
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ type fileInfo struct {
 	Status    string `json:"fileStatus"`
 }
 
-func (dmfh *dodMetadataFileHandler) triggerFileIngest(ctx context.Context, datasetAccession string, metadataFileType metadata_models.MetadataFileType) error {
+func (dmfh *onDemandDatasatCreationHandler) triggerFileIngest(ctx context.Context, datasetAccession string, metadataFileType metadata_models.MetadataFileType) error {
 	ctx, span := observability.StartSpan(ctx, "triggerFileIngest", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("metadata-file-type", metadataFileType.String()))
 	defer span.End()
 
@@ -69,7 +69,7 @@ func (dmfh *dodMetadataFileHandler) triggerFileIngest(ctx context.Context, datas
 	return nil
 }
 
-func (dmfh *dodMetadataFileHandler) triggerFileAccession(ctx context.Context, fileID, fileAccession string) error {
+func (dmfh *onDemandDatasatCreationHandler) triggerFileAccession(ctx context.Context, fileID, fileAccession string) error {
 	ctx, span := observability.StartSpan(ctx, "triggerFileAccession", attribute.String("sda-api-url", sdaAPIUrl))
 	defer span.End()
 
@@ -116,7 +116,7 @@ type datasetCreateReq struct {
 	FileDownloadPaths map[string]string `json:"file_download_paths"`
 }
 
-func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string, imageAccessionFileNames map[string]map[string]string) (int, error) {
+func (dmfh *onDemandDatasatCreationHandler) triggerDatasetCreation(ctx context.Context, datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string, imageAccessionFileNames map[string]map[string]string) (int, error) {
 	ctx, span := observability.StartSpan(ctx, "triggerDatasetCreation", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession))
 	defer span.End()
 
@@ -195,7 +195,7 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, 
 
 var ErrDatasetNotFound = errors.New("dataset not found")
 
-func (dmfh *dodMetadataFileHandler) getDatasetStatus(ctx context.Context, datasetAccession string) (string, int, error) {
+func (dmfh *onDemandDatasatCreationHandler) getDatasetStatus(ctx context.Context, datasetAccession string) (string, int, error) {
 	ctx, span := observability.StartSpan(ctx, "getDatasetStatus", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession))
 	defer span.End()
 
@@ -241,7 +241,7 @@ func (dmfh *dodMetadataFileHandler) getDatasetStatus(ctx context.Context, datase
 	return parsedResp.Status, parsedResp.NumberOfFiles, nil
 }
 
-func (dmfh *dodMetadataFileHandler) triggerDatasetRelease(ctx context.Context, datasetAccession string) error {
+func (dmfh *onDemandDatasatCreationHandler) triggerDatasetRelease(ctx context.Context, datasetAccession string) error {
 	ctx, span := observability.StartSpan(ctx, "triggerDatasetRelease", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession))
 	defer span.End()
 
@@ -274,7 +274,7 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetRelease(ctx context.Context, d
 	return nil
 }
 
-func (dmfh *dodMetadataFileHandler) listMetadataFiles(ctx context.Context, datasetAccession string) ([]*fileInfo, error) {
+func (dmfh *onDemandDatasatCreationHandler) listMetadataFiles(ctx context.Context, datasetAccession string) ([]*fileInfo, error) {
 	ctx, span := observability.StartSpan(ctx, "listMetadataFiles", attribute.String("sda-api-url", sdaAPIUrl))
 	defer span.End()
 

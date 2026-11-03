@@ -1,4 +1,4 @@
-package on_demand_dataset_metadata_file_handler
+package on_demand_dataset_creation_handler
 
 import (
 	"context"
@@ -40,6 +40,7 @@ func TestTriggerDatasetCreation(t *testing.T) {
 		newMockRoundTripper         func() *mockRoundTripper
 		mockRoundTripperAssert      func(*testing.T, *mockRoundTripper)
 		datasetCreateFilesBatchSize int
+		expectedFilesToBeCreated    int
 		expectedError               error
 	}
 
@@ -76,6 +77,7 @@ func TestTriggerDatasetCreation(t *testing.T) {
 			},
 			datasetCreateFilesBatchSize: 3,
 			expectedError:               nil,
+			expectedFilesToBeCreated:    3,
 		}, {
 			name:               "no_metadata_files_multiple_calls",
 			datasetAccessionId: "123",
@@ -133,6 +135,7 @@ func TestTriggerDatasetCreation(t *testing.T) {
 			},
 			datasetCreateFilesBatchSize: 3,
 			expectedError:               nil,
+			expectedFilesToBeCreated:    9,
 		}, {
 			name:               "1_call",
 			datasetAccessionId: "123",
@@ -193,6 +196,7 @@ func TestTriggerDatasetCreation(t *testing.T) {
 			},
 			datasetCreateFilesBatchSize: 15,
 			expectedError:               nil,
+			expectedFilesToBeCreated:    12,
 		}, {
 			name:               "many_calls",
 			datasetAccessionId: "123",
@@ -280,11 +284,12 @@ func TestTriggerDatasetCreation(t *testing.T) {
 			},
 			datasetCreateFilesBatchSize: 1,
 			expectedError:               nil,
+			expectedFilesToBeCreated:    12,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			mrt := tc.newMockRoundTripper()
-			dmfhTester := &dodMetadataFileHandler{
+			dmfhTester := &onDemandDatasatCreationHandler{
 				ctx: nil, // not needed for triggerDatasetCreation test
 				httpClient: &http.Client{
 					Transport: mrt,
@@ -299,14 +304,14 @@ func TestTriggerDatasetCreation(t *testing.T) {
 				datasetCreateFilesBatchSize = old
 			})
 
-			assert.Equal(t, tc.expectedError,
-				dmfhTester.triggerDatasetCreation(
-					context.Background(),
-					tc.datasetAccessionId,
-					tc.metadataFiles,
-					tc.imageAccessionFileNames,
-				),
+			filesToBeCreated, err := dmfhTester.triggerDatasetCreation(
+				context.Background(),
+				tc.datasetAccessionId,
+				tc.metadataFiles,
+				tc.imageAccessionFileNames,
 			)
+			assert.Equal(t, tc.expectedError, err)
+			assert.Equal(t, tc.expectedFilesToBeCreated, filesToBeCreated)
 
 			tc.mockRoundTripperAssert(t, mrt)
 		})

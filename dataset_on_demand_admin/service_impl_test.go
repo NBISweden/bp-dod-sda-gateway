@@ -118,10 +118,10 @@ func (m *mockDatabase) GetOnDemandDatasetRemsMetadata(_ context.Context, dataset
 	return args.Get(0).(*metadata_models.RemsSet), args.Error(1)
 }
 
-func (m *mockDatabase) GetOnDemandDatasetAccessionFromImageAccessionsHash(_ context.Context, imageAccessionHash string) (string, error) {
+func (m *mockDatabase) GetOnDemandDatasetFromImageAccessionsHash(_ context.Context, imageAccessionHash string) (string, bool, error) {
 	args := m.Called(imageAccessionHash)
 
-	return args.String(0), args.Error(1)
+	return args.String(0), args.Bool(1), args.Error(2)
 }
 
 func (m *mockDatabase) IsOnDemandDatasetReleased(_ context.Context, dodDatasetAccession string) (bool, error) {
@@ -136,16 +136,22 @@ func (m *mockDatabase) SetOnDemandDatasetReleased(_ context.Context, datasetAcce
 	return args.Error(0)
 }
 
-func (m *mockDatabase) InsertOnDemandDatasetRequest(_ context.Context, user, datasetAccession, label string) error {
-	args := m.Called(user, datasetAccession, label)
+func (m *mockDatabase) InsertOnDemandDatasetRequest(_ context.Context, user, email, datasetAccession, label string) error {
+	args := m.Called(user, email, datasetAccession, label)
 
 	return args.Error(0)
 }
 
-func (m *mockDatabase) ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error) {
+func (m *mockDatabase) ListUsersOnDemandDatasetRequests(_ context.Context, user string) ([]*models.OnDemandDatasetRequest, error) {
 	args := m.Called(user)
 
 	return args.Get(0).([]*models.OnDemandDatasetRequest), args.Error(1)
+}
+
+func (m *mockDatabase) ListUserEmailsByDatasetAccession(_ context.Context, datasetAccession string) ([]string, error) {
+	args := m.Called(datasetAccession)
+
+	return args.Get(0).([]string), args.Error(1)
 }
 
 func (m *mockOriginDatasetLoader) UnmarshalFileToXml(_ context.Context, file *origin_dataset_file_loader.FileInfo, dst any) error {

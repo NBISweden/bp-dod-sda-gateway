@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	"connectrpc.com/grpcreflect"
 	publicdodservice "github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/public/v1/v1connect"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Server struct {
@@ -21,6 +22,7 @@ type Config struct {
 	Port                   int
 	AuthMiddleware         *authn.Middleware
 	ConnectRPCInterceptors []connect.Interceptor
+	LsAAIUserInfoEndpoint  string
 }
 
 func (d *Server) ListenAndServe() error {
@@ -40,7 +42,12 @@ func NewServer(config Config) (*Server, error) {
 
 	mux := http.NewServeMux()
 	mux.Handle(publicdodservice.NewDatasetOnDemandServiceHandler(
-		&serviceImpl{},
+		&serviceImpl{
+			LsAAIUserInfoEndpoint: config.LsAAIUserInfoEndpoint,
+			lsAAIHttpClient: &http.Client{
+				Transport: otelhttp.NewTransport(http.DefaultTransport),
+			},
+		},
 		connect.WithInterceptors(config.ConnectRPCInterceptors...),
 	))
 

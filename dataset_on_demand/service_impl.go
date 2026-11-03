@@ -5,8 +5,11 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
+	"net/http"
 	"slices"
 
 	"connectrpc.com/authn"
@@ -15,24 +18,27 @@ import (
 	dodservice "github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/public/v1"
 	"github.com/NBISweden/bp-dod-sda-gateway/models"
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
-	"github.com/NBISweden/bp-dod-sda-gateway/on_demand_dataset_metadata_file_handler"
+	"github.com/NBISweden/bp-dod-sda-gateway/on_demand_dataset_creation_handler"
+	"github.com/NBISweden/bp-dod-sda-gateway/pkg/auth_interceptor"
 	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type serviceImpl struct{}
+type serviceImpl struct {
+	LsAAIUserInfoEndpoint string
+	lsAAIHttpClient       *http.Client
+}
 
 func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Request[dodservice.RequestDatasetCreationRequest]) (*connect.Response[dodservice.RequestDatasetCreationResponse], error) {
-	token, ok := authn.GetInfo(ctx).(jwt.Token)
-	if !ok || token.Subject() == "" {
+	authCtxInfo, ok := authn.GetInfo(ctx).(auth_interceptor.AuthCtxInfo)
+	if !ok || authCtxInfo.Subject == "" {
 		slog.Error("could not find authn value in context")
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
-	user := token.Subject()
+	user := authCtxInfo.Subject
 	ctx, span := observability.StartSpan(ctx, "RequestDatasetCreation", attribute.String("user", user))
 	defer span.End()
 
@@ -40,11 +46,18 @@ func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Req
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("no image accessions requested"))
 	}
 
+	userEmail, err := d.getUserEmail(ctx, authCtxInfo.RawToken)
+	if err != nil {
+		span.Error("failed to get user email from ls-aai", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
 	// calculate the hash of the requested image accession to check for already existing on demand dataset with the same set of images
 	imageAccessionHash := hashImageAccessions(c.Msg.GetImageAccessions())
 	// Possible future improvement, lock by the imageAccessionHash to avoid race condition when multiple concurrent requests to create same dataset
 
-	existingOnDemandDatasetAccession, err := database.GetOnDemandDatasetAccessionFromImageAccessionsHash(ctx, imageAccessionHash)
+	existingOnDemandDatasetAccession, datasetReleased, err := database.GetOnDemandDatasetFromImageAccessionsHash(ctx, imageAccessionHash)
 	if err != nil {
 		span.Error("failed to check for existing on demand dataset image accessions hash", err)
 
@@ -52,7 +65,7 @@ func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Req
 	}
 
 	if existingOnDemandDatasetAccession != "" {
-		if err := database.InsertOnDemandDatasetRequest(ctx, user, existingOnDemandDatasetAccession, c.Msg.GetLabel()); err != nil {
+		if err := database.InsertOnDemandDatasetRequest(ctx, user, userEmail, existingOnDemandDatasetAccession, c.Msg.GetLabel()); err != nil {
 			switch {
 			case errors.Is(err, database.ErrAlreadyExists):
 				return nil, connect.NewError(connect.CodeAlreadyExists, nil)
@@ -60,6 +73,16 @@ func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Req
 				span.Error("failed to insert on demand dataset request", err)
 
 				return nil, connect.NewError(connect.CodeInternal, nil)
+			}
+		}
+
+		if datasetReleased {
+			// Since dataset is released, send rems notification directly as dataset should already be ready for rems request
+			if err := on_demand_dataset_creation_handler.SendUserEmailNotification(ctx, existingOnDemandDatasetAccession, userEmail); err != nil {
+				span.Warn("failed to send rems notification email to user", slog.Any("error", err))
+
+				// No error return here as we do not notification email to fail returning the dataset accession ID as released dataset exists,
+				// request was inserted, so a retry from user would fail with CodeAlreadyExists
 			}
 		}
 
@@ -183,13 +206,13 @@ func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Req
 		}
 	}
 
-	if err := database.InsertOnDemandDatasetRequest(ctx, user, onDemandDataset.Accession, c.Msg.GetLabel()); err != nil {
+	if err := database.InsertOnDemandDatasetRequest(ctx, user, userEmail, onDemandDataset.Accession, c.Msg.GetLabel()); err != nil {
 		span.Error("failed to insert on demand dataset request", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
-	if err := on_demand_dataset_metadata_file_handler.RegisterOnDemandDataset(ctx, onDemandDataset); err != nil {
+	if err := on_demand_dataset_creation_handler.RegisterOnDemandDatasetCreation(ctx, onDemandDataset); err != nil {
 		span.Error("failed to register on demand dataset", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
@@ -210,8 +233,8 @@ func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Req
 }
 
 func (d *serviceImpl) GetOnDemandDatasetStatus(ctx context.Context, c *connect.Request[dodservice.GetOnDemandDatasetStatusRequest]) (*connect.Response[dodservice.GetOnDemandDatasetStatusResponse], error) {
-	token, ok := authn.GetInfo(ctx).(jwt.Token)
-	if !ok || token.Subject() == "" {
+	authCtxInfo, ok := authn.GetInfo(ctx).(auth_interceptor.AuthCtxInfo)
+	if !ok || authCtxInfo.Subject == "" {
 		slog.Error("could not find authn value in context")
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
@@ -220,7 +243,7 @@ func (d *serviceImpl) GetOnDemandDatasetStatus(ctx context.Context, c *connect.R
 	ctx, span := observability.StartSpan(ctx,
 		"GetOnDemandDatasetStatus",
 		attribute.String("accession", c.Msg.GetOnDemandDatasetAccession()),
-		attribute.String("user", token.Subject()),
+		attribute.String("user", authCtxInfo.Subject),
 	)
 	defer span.End()
 
@@ -273,19 +296,19 @@ func hashImageAccessions(ids []string) string {
 }
 
 func (d *serviceImpl) ListMyOnDemandDatasets(ctx context.Context, c *connect.Request[dodservice.ListMyOnDemandDatasetsRequest]) (*connect.Response[dodservice.ListMyOnDemandDatasetsResponse], error) {
-	token, ok := authn.GetInfo(ctx).(jwt.Token)
-	if !ok || token.Subject() == "" {
+	authCtxInfo, ok := authn.GetInfo(ctx).(auth_interceptor.AuthCtxInfo)
+	if !ok || authCtxInfo.Subject == "" {
 		slog.Error("could not find authn value in context")
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
 	}
 
 	ctx, span := observability.StartSpan(ctx, "ListMyOnDemandDatasets",
-		attribute.String("user", token.Subject()),
+		attribute.String("user", authCtxInfo.Subject),
 	)
 	defer span.End()
 
-	onDemandDatasetRequest, err := database.ListUsersOnDemandDatasetRequests(ctx, token.Subject())
+	onDemandDatasetRequest, err := database.ListUsersOnDemandDatasetRequests(ctx, authCtxInfo.Subject)
 	if err != nil {
 		span.Error("failed to check if on demand dataset is released", err)
 
@@ -309,4 +332,31 @@ func (d *serviceImpl) ListMyOnDemandDatasets(ctx context.Context, c *connect.Req
 	}
 
 	return connect.NewResponse(&res), nil
+}
+
+func (d *serviceImpl) getUserEmail(ctx context.Context, userToken string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.LsAAIUserInfoEndpoint, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create new request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+userToken)
+
+	rsp, err := d.lsAAIHttpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to do request: %w", err)
+	}
+
+	defer func() {
+		_ = rsp.Body.Close()
+	}()
+
+	parsedRsp := struct {
+		Email string `json:"email"`
+	}{}
+
+	if err := json.NewDecoder(rsp.Body).Decode(&parsedRsp); err != nil {
+		return "", err
+	}
+
+	return parsedRsp.Email, nil
 }

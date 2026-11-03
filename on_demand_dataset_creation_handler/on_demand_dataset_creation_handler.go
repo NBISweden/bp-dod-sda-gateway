@@ -1,4 +1,4 @@
-package on_demand_dataset_metadata_file_handler
+package on_demand_dataset_creation_handler
 
 import (
 	"context"
@@ -29,20 +29,25 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-type DodMetadataFileHandler interface {
-	RegisterOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error
+type OnDemandDatasetCreationHandler interface {
+	RegisterOnDemandDatasetCreation(ctx context.Context, dodDataset *models.OnDemandDataset) error
+	SendUserEmailNotification(ctx context.Context, datasetAccession, recipient string) error
 }
 
-var dmfh DodMetadataFileHandler
+var dmfh OnDemandDatasetCreationHandler
 
-func RegisterDodMetadataFileHandler(newDmfh DodMetadataFileHandler) {
+func RegisterDodMetadataFileHandler(newDmfh OnDemandDatasetCreationHandler) {
 	dmfh = newDmfh
 }
-func RegisterOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error {
-	return dmfh.RegisterOnDemandDataset(ctx, dodDataset)
+func RegisterOnDemandDatasetCreation(ctx context.Context, dodDataset *models.OnDemandDataset) error {
+	return dmfh.RegisterOnDemandDatasetCreation(ctx, dodDataset)
 }
 
-type dodMetadataFileHandler struct {
+func SendUserEmailNotification(ctx context.Context, datasetAccession, recipient string) error {
+	return dmfh.SendUserEmailNotification(ctx, datasetAccession, recipient)
+}
+
+type onDemandDatasatCreationHandler struct {
 	ctx context.Context
 
 	httpClient *http.Client
@@ -60,7 +65,7 @@ func Init(ctx context.Context) error {
 		return errors.New("dod metadata file handler has already been initialized")
 	}
 
-	newDmfh := &dodMetadataFileHandler{
+	newDmfh := &onDemandDatasatCreationHandler{
 		ctx: ctx,
 		httpClient: &http.Client{
 			Transport: otelhttp.NewTransport(http.DefaultTransport),
@@ -133,7 +138,7 @@ func Init(ctx context.Context) error {
 	return nil
 }
 
-func (dmfh *dodMetadataFileHandler) RegisterOnDemandDataset(ctx context.Context, dodDataset *models.OnDemandDataset) error {
+func (dmfh *onDemandDatasatCreationHandler) RegisterOnDemandDatasetCreation(ctx context.Context, dodDataset *models.OnDemandDataset) error {
 	ctx, span := observability.StartSpan(ctx, "RegisterOnDemandDataset", attribute.String("accession", dodDataset.Accession))
 	defer span.End()
 
@@ -231,7 +236,7 @@ func (dmfh *dodMetadataFileHandler) RegisterOnDemandDataset(ctx context.Context,
 	return nil
 }
 
-func (dmfh *dodMetadataFileHandler) monitorDatasetMetadataFiles(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) {
+func (dmfh *onDemandDatasatCreationHandler) monitorDatasetMetadataFiles(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) {
 	for {
 		if dmfh.ctx.Err() != nil {
 			slog.Info("on demand dataset metadata file handler - stopped, context canceled")
@@ -259,7 +264,7 @@ func (dmfh *dodMetadataFileHandler) monitorDatasetMetadataFiles(datasetAccession
 	}
 }
 
-func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) (bool, error) {
+func (dmfh *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) (bool, error) {
 	ctx, span := observability.StartSpan(dmfh.ctx, "pollAndProcess", attribute.String("accession", datasetAccession))
 	defer span.End()
 
@@ -398,6 +403,10 @@ func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, data
 	}
 	if err := dmfh.createRemsCatalogueItem(ctx, remsMetadata, datasetAccession, remsResourceID); err != nil {
 		return false, fmt.Errorf("failed to create rems catalog item for on demand dataset: %w", err)
+	}
+
+	if err := sendEmailNotifications(ctx, datasetAccession); err != nil {
+		return false, fmt.Errorf("failed to send email notifications: %w", err)
 	}
 
 	return true, nil

@@ -1,4 +1,4 @@
-package on_demand_dataset_metadata_file_handler
+package on_demand_dataset_creation_handler
 
 import (
 	"time"

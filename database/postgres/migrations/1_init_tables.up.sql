@@ -30,11 +30,12 @@ CREATE TABLE IF NOT EXISTS image_file
 CREATE TABLE IF NOT EXISTS on_demand_dataset_request
 (
   requested_by_user           TEXT                     NOT NULL,
+  user_email                  TEXT                     NOT NULL,
   on_demand_dataset_accession TEXT REFERENCES on_demand_dataset (accession),
   requested_at                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
   label                       TEXT,
 
-  CONSTRAINT unique_requested_idx UNIQUE(requested_by_user, on_demand_dataset_accession)
+  CONSTRAINT unique_requested_idx UNIQUE (requested_by_user, on_demand_dataset_accession)
 );
 
 CREATE TABLE IF NOT EXISTS on_demand_dataset

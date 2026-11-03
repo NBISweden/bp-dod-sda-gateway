@@ -1,4 +1,4 @@
-package on_demand_dataset_metadata_file_handler
+package on_demand_dataset_creation_handler
 
 import (
 	"bytes"
@@ -39,7 +39,7 @@ type organization struct {
 	OrganizationID string `json:"organization/id"`
 }
 
-func (dmfh *dodMetadataFileHandler) doRemsRequest(_ context.Context, req *http.Request) ([]byte, error) {
+func (dmfh *onDemandDatasatCreationHandler) doRemsRequest(_ context.Context, req *http.Request) ([]byte, error) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Rems-Api-Key", remsKey)
@@ -63,7 +63,7 @@ func (dmfh *dodMetadataFileHandler) doRemsRequest(_ context.Context, req *http.R
 
 	return body, nil
 }
-func (dmfh *dodMetadataFileHandler) createRemsResource(ctx context.Context, remsMetadata *metadata_models.RemsSet, datasetAccession string) (int, error) {
+func (dmfh *onDemandDatasatCreationHandler) createRemsResource(ctx context.Context, remsMetadata *metadata_models.RemsSet, datasetAccession string) (int, error) {
 	ctx, span := observability.StartSpan(ctx, "createRemsResource")
 	defer span.End()
 
@@ -144,7 +144,7 @@ func (dmfh *dodMetadataFileHandler) createRemsResource(ctx context.Context, rems
 	return resourcesCreateParsedResp.Id, nil
 }
 
-func (dmfh *dodMetadataFileHandler) createRemsCatalogueItem(ctx context.Context, remsMetadata *metadata_models.RemsSet, datasetAccession string, remsResourceID int) error {
+func (dmfh *onDemandDatasatCreationHandler) createRemsCatalogueItem(ctx context.Context, remsMetadata *metadata_models.RemsSet, datasetAccession string, remsResourceID int) error {
 	ctx, span := observability.StartSpan(ctx, "createRemsCatalogueItem")
 	defer span.End()
 

@@ -20,7 +20,7 @@ import (
 	"github.com/NBISweden/bp-dod-sda-gateway/database/postgres"
 	"github.com/NBISweden/bp-dod-sda-gateway/dataset_on_demand"
 	"github.com/NBISweden/bp-dod-sda-gateway/dataset_on_demand_admin"
-	"github.com/NBISweden/bp-dod-sda-gateway/on_demand_dataset_metadata_file_handler"
+	"github.com/NBISweden/bp-dod-sda-gateway/on_demand_dataset_creation_handler"
 	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader/metadata_submitter"
 	"github.com/NBISweden/bp-dod-sda-gateway/pkg/auth_interceptor"
 	configpkg "github.com/NBISweden/bp-dod-sda-gateway/pkg/config"
@@ -65,7 +65,7 @@ func run() error {
 		return fmt.Errorf("failed to init otel connect interceptor: %w", err)
 	}
 
-	if err := on_demand_dataset_metadata_file_handler.Init(ctx); err != nil {
+	if err := on_demand_dataset_creation_handler.Init(ctx); err != nil {
 		return fmt.Errorf("failed to init dod metadata file handler: %w", err)
 	}
 

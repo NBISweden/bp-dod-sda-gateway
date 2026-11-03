@@ -1,4 +1,4 @@
-package on_demand_dataset_metadata_file_handler
+package on_demand_dataset_creation_handler
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-func (dmfh *dodMetadataFileHandler) marshalEncryptAndUploadFile(ctx context.Context, filePath string, metadata any) error {
+func (dmfh *onDemandDatasatCreationHandler) marshalEncryptAndUploadFile(ctx context.Context, filePath string, metadata any) error {
 	ctx, span := observability.StartSpan(ctx, "marshalEncryptAndUploadFile", attribute.String("file-path", filePath))
 	defer span.End()
 

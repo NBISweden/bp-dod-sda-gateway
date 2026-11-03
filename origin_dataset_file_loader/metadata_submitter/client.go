@@ -18,9 +18,9 @@ import (
 	"github.com/NBISweden/bp-dod-sda-gateway/models"
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 )
 
 type metadataSubmitterClient struct {
@@ -255,7 +255,7 @@ func (mdc *metadataSubmitterClient) generateAndSignToken() (string, error) {
 		jwt.AudienceKey:   "bp-sd-submit-api",
 	}
 
-	jwtKey, err := jwk.ParseKey(privateKey, jwk.WithPEM(true))
+	jwtKey, err := jwk.ParseKey(privateKey, jwk.WithX509(true))
 	if err != nil {
 		return "", err
 	}
@@ -273,7 +273,7 @@ func (mdc *metadataSubmitterClient) generateAndSignToken() (string, error) {
 		}
 	}
 
-	tokenString, err := jwt.Sign(token, jwt.WithKey(jwa.ES256, jwtKey))
+	tokenString, err := jwt.Sign(token, jwt.WithKey(jwa.ES256(), jwtKey))
 	if err != nil {
 		return "", err
 	}
