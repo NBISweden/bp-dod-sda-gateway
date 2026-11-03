@@ -20,6 +20,8 @@ type Identity struct {
 	Subject string
 }
 
+// TODO validate aud
+
 func NewAuthenticator(jwtPubKeyURL string) (*Authenticator, error) {
 	a := new(Authenticator)
 

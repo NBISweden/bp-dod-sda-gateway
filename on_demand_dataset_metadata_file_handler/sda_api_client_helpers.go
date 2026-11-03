@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -115,13 +116,13 @@ type datasetCreateReq struct {
 	FileDownloadPaths map[string]string `json:"file_download_paths"`
 }
 
-func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string, imageAccessionFileNames map[string]map[string]string) error {
+func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string, imageAccessionFileNames map[string]map[string]string) (int, error) {
 	ctx, span := observability.StartSpan(ctx, "triggerDatasetCreation", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession))
 	defer span.End()
 
 	endpoint, err := url.JoinPath(sdaAPIUrl, "dataset", "create")
 	if err != nil {
-		return fmt.Errorf("invalid base URL: %w", err)
+		return 0, fmt.Errorf("invalid base URL: %w", err)
 	}
 
 	fileDownloadPaths := make(map[string]string)
@@ -139,6 +140,8 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, 
 			fileDownloadPaths[fileAccession] = fmt.Sprintf("IMAGES/IMAGE_%s/%s.c4gh", imageAccession, baseFileName)
 		}
 	}
+
+	nrOfFilesToAdd := len(fileDownloadPaths)
 
 	for len(fileDownloadPaths) > 0 {
 		fileAccessionsInBatch := make([]string, 0, datasetCreateFilesBatchSize)
@@ -163,31 +166,79 @@ func (dmfh *dodMetadataFileHandler) triggerDatasetCreation(ctx context.Context, 
 
 		reqBody, err := json.Marshal(dcr)
 		if err != nil {
-			return fmt.Errorf("failed to marshal dataset request body: %w", err)
+			return 0, fmt.Errorf("failed to marshal dataset request body: %w", err)
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(reqBody))
 		if err != nil {
-			return fmt.Errorf("build request: %w", err)
+			return 0, fmt.Errorf("build request: %w", err)
 		}
 		req.Header.Set("Accept", "application/json")
 		req.Header.Set("Authorization", "Bearer "+inboxToken)
 
 		resp, err := dmfh.httpClient.Do(req)
 		if err != nil {
-			return fmt.Errorf("http request: %w", err)
+			return 0, fmt.Errorf("http request: %w", err)
 		}
 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			body, _ := io.ReadAll(resp.Body)
 			_ = resp.Body.Close()
 
-			return fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
+			return 0, fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
 		}
 		_ = resp.Body.Close()
 	}
 
-	return nil
+	return nrOfFilesToAdd, nil
+}
+
+var ErrDatasetNotFound = errors.New("dataset not found")
+
+func (dmfh *dodMetadataFileHandler) getDatasetStatus(ctx context.Context, datasetAccession string) (string, int, error) {
+	ctx, span := observability.StartSpan(ctx, "getDatasetStatus", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession))
+	defer span.End()
+
+	endpoint, err := url.JoinPath(sdaAPIUrl, "dataset", datasetAccession)
+	if err != nil {
+		return "", 0, fmt.Errorf("invalid base URL: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return "", 0, fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+inboxToken)
+
+	resp, err := dmfh.httpClient.Do(req)
+	if err != nil {
+		return "", 0, fmt.Errorf("http request: %w", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if resp.StatusCode == http.StatusNotFound {
+			return "", 0, ErrDatasetNotFound
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+
+		return "", 0, fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
+	}
+
+	parsedResp := struct {
+		Status        string `json:"status"`
+		NumberOfFiles int    `json:"numberOfFiles"`
+	}{}
+
+	if err := json.NewDecoder(resp.Body).Decode(&parsedResp); err != nil {
+		return "", 0, fmt.Errorf("failed to decode response body: %w", err)
+	}
+
+	return parsedResp.Status, parsedResp.NumberOfFiles, nil
 }
 
 func (dmfh *dodMetadataFileHandler) triggerDatasetRelease(ctx context.Context, datasetAccession string) error {

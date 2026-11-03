@@ -252,7 +252,7 @@ func (mdc *metadataSubmitterClient) generateAndSignToken() (string, error) {
 		jwt.IssuedAtKey:   time.Now().UTC(),
 		jwt.IssuerKey:     "bp-dod-sda-gateway",
 		jwt.SubjectKey:    "bp-dod-sda-gateway",
-		jwt.AudienceKey:   "metadata-submitter",
+		jwt.AudienceKey:   "bp-sd-submit-api",
 	}
 
 	jwtKey, err := jwk.ParseKey(privateKey, jwk.WithPEM(true))

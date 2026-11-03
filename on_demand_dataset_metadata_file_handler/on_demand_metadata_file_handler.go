@@ -327,6 +327,66 @@ func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, data
 		return false, nil
 	}
 
+	imageBaseFileNames, err := database.ListOnDemandDatasetImageFileAccessions(ctx, datasetAccession)
+	if err != nil {
+		return false, fmt.Errorf("failed to list on demand dataset image accessions: %w", err)
+	}
+
+	nrOfFilesToAdd, err := dmfh.triggerDatasetCreation(ctx, datasetAccession, datasetMetadataFiles, imageBaseFileNames)
+	if err != nil {
+		return false, fmt.Errorf("failed to trigger dataset creation: %w", err)
+	}
+
+	// Small sleep to give chance for dataset creation to be processed, as otherwise sda-api will most likely just respond with not found on first check while mapper is processing creation request
+	time.Sleep(5 * time.Second)
+
+	attempts := 0
+	for {
+		_, nrOfFilesAdded, err := dmfh.getDatasetStatus(ctx, datasetAccession)
+		if err != nil && !errors.Is(err, ErrDatasetNotFound) {
+			return false, fmt.Errorf("failed to get dataset status: %w", err)
+		}
+
+		if nrOfFilesAdded == nrOfFilesToAdd {
+			break
+		}
+
+		span.Debug("waiting for dataset creation",
+			slog.Int("attempt", attempts),
+			slog.Int("files_added", nrOfFilesAdded),
+			slog.Int("files_to_add", nrOfFilesToAdd),
+		)
+		time.Sleep(sdaAPIPollInterval)
+		attempts++
+	}
+
+	if err := dmfh.triggerDatasetRelease(ctx, datasetAccession); err != nil {
+		return false, fmt.Errorf("failed to trigger on demand dataset release: %w", err)
+	}
+
+	attempts = 0
+	for {
+		status, _, err := dmfh.getDatasetStatus(ctx, datasetAccession)
+		if err != nil {
+			return false, fmt.Errorf("failed to get dataset status: %w", err)
+		}
+
+		if status == "released" {
+			break
+		}
+
+		span.Debug("waiting for dataset release",
+			slog.Int("attempt", attempts),
+			slog.String("current_status", status),
+		)
+		time.Sleep(sdaAPIPollInterval)
+		attempts++
+	}
+
+	if err := database.SetOnDemandDatasetReleased(ctx, datasetAccession); err != nil {
+		return false, fmt.Errorf("failed to set on demand dataset as released: %w", err)
+	}
+
 	remsMetadata, err := database.GetOnDemandDatasetRemsMetadata(ctx, datasetAccession)
 	if err != nil {
 		return false, err
@@ -338,26 +398,6 @@ func (dmfh *dodMetadataFileHandler) pollAndProcess(datasetAccession string, data
 	}
 	if err := dmfh.createRemsCatalogueItem(ctx, remsMetadata, datasetAccession, remsResourceID); err != nil {
 		return false, fmt.Errorf("failed to create rems catalog item for on demand dataset: %w", err)
-	}
-
-	imageBaseFileNames, err := database.ListOnDemandDatasetImageFileAccessions(ctx, datasetAccession)
-	if err != nil {
-		return false, fmt.Errorf("failed to list on demand dataset image accessions: %w", err)
-	}
-
-	if err := dmfh.triggerDatasetCreation(ctx, datasetAccession, datasetMetadataFiles, imageBaseFileNames); err != nil {
-		return false, fmt.Errorf("failed to trigger dataset creation: %w", err)
-	}
-
-	// Small sleep to allow the dataset creation to be processed, as otherwise sda-api will respond with not found while mapper is processing creation request on the dataset release request
-	time.Sleep(5 * time.Second)
-
-	if err := dmfh.triggerDatasetRelease(ctx, datasetAccession); err != nil {
-		return false, fmt.Errorf("failed to trigger on demand dataset release: %w", err)
-	}
-
-	if err := database.SetOnDemandDatasetReleased(ctx, datasetAccession); err != nil {
-		return false, fmt.Errorf("failed to set on demand dataset as released: %w", err)
 	}
 
 	return true, nil

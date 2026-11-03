@@ -26,6 +26,12 @@ var (
 	c4ghPublicKeyFilePath string
 
 	datasetCreateFilesBatchSize int
+
+	emailRemsNotification bool
+	emailSmtpHost         string
+	emailSmtpPort         int
+	emailAddress          string
+	emailPassword         string
 )
 
 func init() {
@@ -155,6 +161,51 @@ func init() {
 			Required: true,
 			AssignFunc: func(flagName string) {
 				c4ghPublicKeyFilePath = viper.GetString(flagName)
+			},
+		}, &config.Flag{
+			Name: "email.rems_notification",
+			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
+				flagSet.Bool(flagName, false, "If to to send notification email to requestor when the on demand dataset has been released and registered in rems")
+			},
+			Required: false,
+			AssignFunc: func(flagName string) {
+				emailRemsNotification = viper.GetBool(flagName)
+			},
+		}, &config.Flag{
+			Name: "email.stmp_host",
+			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
+				flagSet.String(flagName, "", "The STMP hostname to connect to for sending rems notification email")
+			},
+			Required: false,
+			AssignFunc: func(flagName string) {
+				emailSmtpHost = viper.GetString(flagName)
+			},
+		}, &config.Flag{
+			Name: "email.stmp_port",
+			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
+				flagSet.Int(flagName, 587, "The STMP port on the stmp_host to connect to for sending rems notification email")
+			},
+			Required: false,
+			AssignFunc: func(flagName string) {
+				emailSmtpPort = viper.GetInt(flagName)
+			},
+		}, &config.Flag{
+			Name: "email.address",
+			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
+				flagSet.String(flagName, "", "The email address used for sending rems notification emails")
+			},
+			Required: false,
+			AssignFunc: func(flagName string) {
+				emailAddress = viper.GetString(flagName)
+			},
+		}, &config.Flag{
+			Name: "email.password",
+			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
+				flagSet.String(flagName, "", "The password for the email address used for sending rems notification emails")
+			},
+			Required: false,
+			AssignFunc: func(flagName string) {
+				emailPassword = viper.GetString(flagName)
 			},
 		},
 	)
