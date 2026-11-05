@@ -13,7 +13,7 @@ func init() {
 	queries[listUsersOnDemandDatasetRequestsQuery] = `SELECT odd.accession, odd.released_at IS NOT NULL, oddr.requested_at, oddr.label
 FROM on_demand_dataset_request as oddr
 INNER JOIN on_demand_dataset AS odd ON odd.accession = oddr.on_demand_dataset_accession
-WHERE oddr.requested_by = $1
+WHERE oddr.requested_by_user = $1
 `
 }
 

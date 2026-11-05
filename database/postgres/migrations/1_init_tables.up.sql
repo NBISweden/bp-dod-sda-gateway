@@ -27,17 +27,6 @@ CREATE TABLE IF NOT EXISTS image_file
   base_file_name    TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS on_demand_dataset_request
-(
-  requested_by_user           TEXT                     NOT NULL,
-  user_email                  TEXT                     NOT NULL,
-  on_demand_dataset_accession TEXT REFERENCES on_demand_dataset (accession),
-  requested_at                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
-  label                       TEXT,
-
-  CONSTRAINT unique_requested_idx UNIQUE (requested_by_user, on_demand_dataset_accession)
-);
-
 CREATE TABLE IF NOT EXISTS on_demand_dataset
 (
   accession             TEXT PRIMARY KEY,
@@ -73,4 +62,15 @@ CREATE TABLE IF NOT EXISTS on_demand_dataset_image
   image_accession             TEXT NOT NULL REFERENCES dataset_image (accession),
 
   CONSTRAINT on_demand_dataset_image_unique_idx UNIQUE (on_demand_dataset_accession, image_accession)
+);
+
+CREATE TABLE IF NOT EXISTS on_demand_dataset_request
+(
+  requested_by_user           TEXT                     NOT NULL,
+  user_email                  TEXT                     NOT NULL,
+  on_demand_dataset_accession TEXT REFERENCES on_demand_dataset (accession),
+  requested_at                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
+  label                       TEXT,
+
+  CONSTRAINT unique_requested_idx UNIQUE (requested_by_user, on_demand_dataset_accession)
 );
