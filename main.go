@@ -97,7 +97,7 @@ func run() error {
 	}
 	dodAdminServer, err := dataset_on_demand_admin.NewServer(
 		dataset_on_demand_admin.Config{
-			Port:                    config.DodServicePort(),
+			Port:                    config.DodAdminServicePort(),
 			ConnectRPCInterceptors:  []connect.Interceptor{otelInterceptor},
 			OriginDatasetFileLoader: msdb,
 		},
