@@ -21,10 +21,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go/tracing/smithyoteltracing"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/neicnordic/crypt4gh/keys"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/crypto/chacha20poly1305"
 )
@@ -118,7 +119,7 @@ func Init(ctx context.Context) error {
 		o.EndpointOptions.DisableHTTPS = inboxDisableHTTPS
 		o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
 		o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
-		otelaws.AppendMiddlewares(&o.APIOptions)
+		o.TracerProvider = smithyoteltracing.Adapt(otel.GetTracerProvider())
 	})
 
 	// Create an datasetCreationRequestHandler with the session and default options
@@ -328,6 +329,7 @@ func (dmfh *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession stri
 		}
 	}
 
+	// TODO reconciliate, eg no files if dataset creation / release was success but rems stuff failed
 	if !allReady || len(metadataFiles) == 0 {
 		return false, nil
 	}
@@ -345,6 +347,7 @@ func (dmfh *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession stri
 	// Small sleep to give chance for dataset creation to be processed, as otherwise sda-api will most likely just respond with not found on first check while mapper is processing creation request
 	time.Sleep(5 * time.Second)
 
+	// TODO handle restarts for these retries
 	attempts := 0
 	for {
 		_, nrOfFilesAdded, err := dmfh.getDatasetStatus(ctx, datasetAccession)
