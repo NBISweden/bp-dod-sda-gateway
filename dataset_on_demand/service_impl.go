@@ -1,0 +1,362 @@
+package dataset_on_demand
+
+import (
+	"context"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"slices"
+
+	"connectrpc.com/authn"
+	"connectrpc.com/connect"
+	"github.com/NBISweden/bp-dod-sda-gateway/database"
+	dodservice "github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/public/v1"
+	"github.com/NBISweden/bp-dod-sda-gateway/models"
+	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
+	"github.com/NBISweden/bp-dod-sda-gateway/on_demand_dataset_creation_handler"
+	"github.com/NBISweden/bp-dod-sda-gateway/pkg/auth_interceptor"
+	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
+	"go.opentelemetry.io/otel/attribute"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+type serviceImpl struct {
+	UserinfoEndpoint string
+	lsAAIHttpClient  *http.Client
+}
+
+func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Request[dodservice.RequestDatasetCreationRequest]) (*connect.Response[dodservice.RequestDatasetCreationResponse], error) {
+	authCtxInfo, ok := authn.GetInfo(ctx).(auth_interceptor.AuthCtxInfo)
+	if !ok || authCtxInfo.Subject == "" {
+		slog.Error("could not find authn value in context")
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	user := authCtxInfo.Subject
+	ctx, span := observability.StartSpan(ctx, "RequestDatasetCreation", attribute.String("user", user))
+	defer span.End()
+
+	if len(c.Msg.GetImageAccessions()) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("no image accessions requested"))
+	}
+
+	userEmail, err := d.getUserEmail(ctx, authCtxInfo.RawToken)
+	if err != nil {
+		span.Error("failed to get user email from ls-aai", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	// calculate the hash of the requested image accession to check for already existing on demand dataset with the same set of images
+	imageAccessionHash := hashImageAccessions(c.Msg.GetImageAccessions())
+	// Possible future improvement, lock by the imageAccessionHash to avoid race condition when multiple concurrent requests to create same dataset
+
+	existingOnDemandDatasetAccession, datasetReleased, err := database.GetOnDemandDatasetFromImageAccessionsHash(ctx, imageAccessionHash)
+	if err != nil {
+		span.Error("failed to check for existing on demand dataset image accessions hash", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	if existingOnDemandDatasetAccession != "" {
+		if err := database.InsertOnDemandDatasetRequest(ctx, user, userEmail, existingOnDemandDatasetAccession, c.Msg.GetLabel()); err != nil {
+			switch {
+			case errors.Is(err, database.ErrAlreadyExists):
+				return nil, connect.NewError(connect.CodeAlreadyExists, nil)
+			default:
+				span.Error("failed to insert on demand dataset request", err)
+
+				return nil, connect.NewError(connect.CodeInternal, nil)
+			}
+		}
+
+		if datasetReleased {
+			// Since dataset is released, send rems notification directly as dataset should already be ready for rems request
+			if err := on_demand_dataset_creation_handler.SendUserEmailNotification(ctx, existingOnDemandDatasetAccession, userEmail); err != nil {
+				span.Warn("failed to send rems notification email to user", slog.Any("error", err))
+
+				// No error return here as we do not notification email to fail returning the dataset accession ID as released dataset exists,
+				// request was inserted, so a retry from user would fail with CodeAlreadyExists
+			}
+		}
+
+		return connect.NewResponse(&dodservice.RequestDatasetCreationResponse{
+			OnDemandDatasetAccession: existingOnDemandDatasetAccession,
+		}), nil
+	}
+
+	originDatasetImages := make(map[string]map[string]struct{})
+
+	// Create a new context without cancel such that if user cancels the request we still proceed to finish the on demand dataset registration
+	// This is to avoid scenarios where caller cancels the request while uploading and triggering ingestion for the metadata files, and where it could end up in a partial state
+	ctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	defer cancel()
+
+	tx, err := database.BeginTransaction(ctx)
+	if err != nil {
+		span.Error("failed to begin database transaction", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	defer func() {
+		if err := tx.Rollback(); err != nil {
+			span.Error("failed to rollback database transaction", err)
+		}
+	}()
+
+	for _, imageAccession := range c.Msg.GetImageAccessions() {
+		originDatasetAccession, err := tx.GetOriginDatasetAccessionFromImageAccession(ctx, imageAccession)
+		if err != nil {
+			span.Error("failed to get origin dataset accession from image accession", err, slog.String("image-accession", imageAccession))
+
+			return nil, connect.NewError(connect.CodeInternal, nil)
+		}
+
+		if originDatasetAccession == "" {
+			span.Warn("no dataset found from image accession", slog.String("image-accession", imageAccession))
+
+			return nil, connect.NewError(connect.CodeNotFound, nil)
+		}
+		if _, ok := originDatasetImages[originDatasetAccession]; !ok {
+			originDatasetImages[originDatasetAccession] = map[string]struct{}{imageAccession: {}}
+
+			continue
+		}
+
+		if _, ok := originDatasetImages[originDatasetAccession][imageAccession]; ok {
+			span.Info("user requested to combine identical image accessions", slog.String("image-accession", imageAccession))
+
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("duplicate image accession requested"))
+		}
+
+		originDatasetImages[originDatasetAccession][imageAccession] = struct{}{}
+	}
+
+	originDatasets := make(map[string]*models.OriginDataset)
+
+	var ensureSameWorkflowID int
+
+	var ensureSameTou *metadata_models.PolicySet
+
+	for originDatasetAccession := range originDatasetImages {
+		originDataset, err := tx.GetOriginDataset(ctx, originDatasetAccession)
+		if err != nil {
+			span.Error("failed to get origin dataset", err, slog.String("accession", originDatasetAccession))
+
+			return nil, connect.NewError(connect.CodeInternal, nil)
+		}
+
+		if originDataset == nil {
+			span.Error("failed to find origin dataset", errors.New("failed to find origin dataset"), slog.String("accession", originDatasetAccession))
+
+			return nil, connect.NewError(connect.CodeInternal, nil)
+		}
+
+		originDatasets[originDatasetAccession] = originDataset
+
+		if ensureSameWorkflowID == 0 {
+			ensureSameWorkflowID = originDataset.RemsWorkflowID
+		}
+
+		if ensureSameTou == nil {
+			ensureSameTou = originDataset.Policy
+		}
+
+		// If only images from one dataset no need to compare
+		if len(originDatasetImages) == 1 {
+			continue
+		}
+
+		if ensureSameWorkflowID != originDataset.RemsWorkflowID {
+			span.Info("user tried to combine datasets with different workflows id")
+
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("can not combine images from datasets originating from different DaCs"))
+		}
+
+		if !ensureSameTou.Equal(originDataset.Policy) {
+			span.Info("user tried to combine datasets with different terms of use")
+
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("can not combine images from datasets with different terms of use"))
+		}
+	}
+
+	onDemandDataset := buildOnDemandDataset(ctx, originDatasets, originDatasetImages)
+	span.SetAttributes(attribute.String("on-demand-dataset-accession", onDemandDataset.Accession))
+
+	if err := tx.InsertOnDemandDataset(ctx, onDemandDataset, imageAccessionHash); err != nil {
+		span.Error("failed to insert on demand dataset", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	for originAccession, imageAccessions := range originDatasetImages {
+		for imageAccession := range imageAccessions {
+			if err := tx.InsertOnDemandDatasetImage(ctx, onDemandDataset.Accession, imageAccession); err != nil {
+				span.Error("failed to insert on demand dataset image", err, slog.String("origin-accession", originAccession), slog.String("image-accession", imageAccession))
+
+				return nil, connect.NewError(connect.CodeInternal, nil)
+			}
+		}
+	}
+
+	if err := tx.InsertOnDemandDatasetRequest(ctx, user, userEmail, onDemandDataset.Accession, c.Msg.GetLabel()); err != nil {
+		span.Error("failed to insert on demand dataset request", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	if err := on_demand_dataset_creation_handler.RegisterOnDemandDatasetCreation(ctx, onDemandDataset); err != nil {
+		span.Error("failed to register on demand dataset", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	// For now, we risk failing to commit after having uploaded and triggered ingestion for the metadata files(done by RegisterOnDemandDataset), but should be ok for now
+	if err := tx.Commit(); err != nil {
+		span.Error("failed to commit database transaction", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	span.Info("on demand dataset registered successfully")
+
+	return connect.NewResponse(&dodservice.RequestDatasetCreationResponse{
+		OnDemandDatasetAccession: onDemandDataset.Accession,
+	}), nil
+}
+
+func (d *serviceImpl) GetOnDemandDatasetStatus(ctx context.Context, c *connect.Request[dodservice.GetOnDemandDatasetStatusRequest]) (*connect.Response[dodservice.GetOnDemandDatasetStatusResponse], error) {
+	authCtxInfo, ok := authn.GetInfo(ctx).(auth_interceptor.AuthCtxInfo)
+	if !ok || authCtxInfo.Subject == "" {
+		slog.Error("could not find authn value in context")
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	ctx, span := observability.StartSpan(ctx,
+		"GetOnDemandDatasetStatus",
+		attribute.String("accession", c.Msg.GetOnDemandDatasetAccession()),
+		attribute.String("user", authCtxInfo.Subject),
+	)
+	defer span.End()
+
+	if c.Msg.GetOnDemandDatasetAccession() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("empty dod dataset accession"))
+	}
+
+	onDemandDatasetReleased, err := database.IsOnDemandDatasetReleased(ctx, c.Msg.GetOnDemandDatasetAccession())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, nil)
+		}
+		span.Error("failed to check if on demand dataset is released", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	res := dodservice.GetOnDemandDatasetStatusResponse{
+		Status: dodservice.OnDemandDataset_STATUS_CREATING,
+	}
+
+	if onDemandDatasetReleased {
+		res.Status = dodservice.OnDemandDataset_STATUS_RELEASED
+	}
+
+	return connect.NewResponse(&res), nil
+}
+
+// hashImageAccessions takes a slice of image accessions, sorts them, removes duplicates and returns a sha256 hash of the slice
+func hashImageAccessions(ids []string) string {
+	sorted := append([]string(nil), ids...)
+	slices.Sort(sorted)
+
+	n := 0
+	for _, id := range sorted {
+		if n == 0 || id != sorted[n-1] {
+			sorted[n] = id
+			n++
+		}
+	}
+	sorted = sorted[:n]
+
+	h := sha256.New()
+	for _, id := range sorted {
+		_, _ = h.Write([]byte(id))
+		_, _ = h.Write([]byte{0}) // separator
+	}
+
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (d *serviceImpl) ListMyOnDemandDatasets(ctx context.Context, c *connect.Request[dodservice.ListMyOnDemandDatasetsRequest]) (*connect.Response[dodservice.ListMyOnDemandDatasetsResponse], error) {
+	authCtxInfo, ok := authn.GetInfo(ctx).(auth_interceptor.AuthCtxInfo)
+	if !ok || authCtxInfo.Subject == "" {
+		slog.Error("could not find authn value in context")
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	ctx, span := observability.StartSpan(ctx, "ListMyOnDemandDatasets",
+		attribute.String("user", authCtxInfo.Subject),
+	)
+	defer span.End()
+
+	onDemandDatasetRequest, err := database.ListUsersOnDemandDatasetRequests(ctx, authCtxInfo.Subject)
+	if err != nil {
+		span.Error("failed to check if on demand dataset is released", err)
+
+		return nil, connect.NewError(connect.CodeInternal, nil)
+	}
+
+	res := dodservice.ListMyOnDemandDatasetsResponse{
+		OnDemandDatasets: make([]*dodservice.OnDemandDataset, len(onDemandDatasetRequest)),
+	}
+
+	for i, oddr := range onDemandDatasetRequest {
+		res.OnDemandDatasets[i] = &dodservice.OnDemandDataset{
+			Accession:   oddr.OnDemandDatasetAccession,
+			Status:      dodservice.OnDemandDataset_STATUS_CREATING,
+			RequestedAt: timestamppb.New(oddr.RequestedAt),
+			Label:       oddr.Label,
+		}
+		if oddr.Released {
+			res.OnDemandDatasets[i].Status = dodservice.OnDemandDataset_STATUS_RELEASED
+		}
+	}
+
+	return connect.NewResponse(&res), nil
+}
+
+func (d *serviceImpl) getUserEmail(ctx context.Context, userToken string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.UserinfoEndpoint, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create new request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+userToken)
+
+	rsp, err := d.lsAAIHttpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to do request: %w", err)
+	}
+
+	defer func() {
+		_ = rsp.Body.Close()
+	}()
+
+	parsedRsp := struct {
+		Email string `json:"email"`
+	}{}
+
+	if err := json.NewDecoder(rsp.Body).Decode(&parsedRsp); err != nil {
+		return "", err
+	}
+
+	return parsedRsp.Email, nil
+}
