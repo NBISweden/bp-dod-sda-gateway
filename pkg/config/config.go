@@ -28,12 +28,12 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -147,14 +147,23 @@ func Load() error {
 		flag.AssignFunc(flag.Name)
 	}
 
-	stringLevel := viper.GetString("log.level")
-	logLevel, err := log.ParseLevel(stringLevel)
-	if err != nil {
-		log.Debugf("Log level '%s' not supported, setting to 'trace'", stringLevel)
-		logLevel = log.TraceLevel
-	}
-	log.SetLevel(logLevel)
-	log.Infof("Setting log level to '%s'", stringLevel)
-
+	// TODO log format
+	slogLevel := slogLogLevelFromString(viper.GetString("log.level"))
+	_ = slog.SetLogLoggerLevel(slogLevel)
+	slog.Info("log level set", slog.String("level", slogLevel.String()))
 	return nil
+}
+
+func slogLogLevelFromString(level string) slog.Level {
+	switch strings.ToLower(level) {
+	case "error", "fatal", "panic":
+		return slog.LevelError
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "info":
+		return slog.LevelInfo
+	default:
+		// "debug", "trace", and unknown level -> Debug level
+		return slog.LevelDebug
+	}
 }

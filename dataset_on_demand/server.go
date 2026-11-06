@@ -22,7 +22,7 @@ type Config struct {
 	Port                   int
 	AuthMiddleware         *authn.Middleware
 	ConnectRPCInterceptors []connect.Interceptor
-	LsAAIUserInfoEndpoint  string
+	UserinfoEndpoint       string
 }
 
 func (d *Server) ListenAndServe() error {
@@ -39,11 +39,14 @@ func NewServer(config Config) (*Server, error) {
 	if config.Port == 0 {
 		return nil, errors.New("no port provided")
 	}
+	if config.UserinfoEndpoint == "" {
+		return nil, errors.New("no ls-AAI userinfo endpoint provided")
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle(publicdodservice.NewDatasetOnDemandServiceHandler(
 		&serviceImpl{
-			LsAAIUserInfoEndpoint: config.LsAAIUserInfoEndpoint,
+			UserinfoEndpoint: config.UserinfoEndpoint,
 			lsAAIHttpClient: &http.Client{
 				Transport: otelhttp.NewTransport(http.DefaultTransport),
 			},

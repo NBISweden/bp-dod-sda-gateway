@@ -53,6 +53,7 @@ func (a *Authenticator) fetchJwtPubKeys(ctx context.Context) (jwk.Set, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// TODO cache keys for x time??
 	client := jwkfetch.NewClient()
 	set, err := client.Fetch(ctx, a.jwtPubKeyURL)
 	if err != nil {
@@ -71,6 +72,7 @@ func (a *Authenticator) fetchJwtPubKeys(ctx context.Context) (jwk.Set, error) {
 	return set, nil
 }
 
+// TODO no parseable errors for client
 func (a *Authenticator) Authenticate(ctx context.Context, req *http.Request) (any, error) {
 	ctx, span := observability.StartSpan(ctx, "Authenticate")
 	defer span.End()

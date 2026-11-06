@@ -87,6 +87,7 @@ func run() error {
 
 	dodServer, err := dataset_on_demand.NewServer(
 		dataset_on_demand.Config{
+			UserinfoEndpoint:       config.DodServiceUserinfoEndpoint(),
 			Port:                   config.DodServicePort(),
 			AuthMiddleware:         authMiddleware,
 			ConnectRPCInterceptors: []connect.Interceptor{otelInterceptor},

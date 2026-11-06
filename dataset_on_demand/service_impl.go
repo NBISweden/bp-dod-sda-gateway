@@ -26,8 +26,8 @@ import (
 )
 
 type serviceImpl struct {
-	LsAAIUserInfoEndpoint string
-	lsAAIHttpClient       *http.Client
+	UserinfoEndpoint string
+	lsAAIHttpClient  *http.Client
 }
 
 func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Request[dodservice.RequestDatasetCreationRequest]) (*connect.Response[dodservice.RequestDatasetCreationResponse], error) {
@@ -206,7 +206,7 @@ func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Req
 		}
 	}
 
-	if err := database.InsertOnDemandDatasetRequest(ctx, user, userEmail, onDemandDataset.Accession, c.Msg.GetLabel()); err != nil {
+	if err := tx.InsertOnDemandDatasetRequest(ctx, user, userEmail, onDemandDataset.Accession, c.Msg.GetLabel()); err != nil {
 		span.Error("failed to insert on demand dataset request", err)
 
 		return nil, connect.NewError(connect.CodeInternal, nil)
@@ -335,7 +335,7 @@ func (d *serviceImpl) ListMyOnDemandDatasets(ctx context.Context, c *connect.Req
 }
 
 func (d *serviceImpl) getUserEmail(ctx context.Context, userToken string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.LsAAIUserInfoEndpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.UserinfoEndpoint, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create new request: %w", err)
 	}

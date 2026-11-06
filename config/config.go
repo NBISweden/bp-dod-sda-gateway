@@ -7,9 +7,10 @@ import (
 )
 
 var (
-	dodServicePort         int
-	dodAdminServicePort    int
-	dodServiceJwtPubKeyUrl string
+	dodServicePort             int
+	dodServiceUserinfoEndpoint string
+	dodAdminServicePort        int
+	dodServiceJwtPubKeyUrl     string
 )
 
 func init() {
@@ -21,6 +22,15 @@ func init() {
 			},
 			AssignFunc: func(flagName string) {
 				dodServicePort = viper.GetInt(flagName)
+			},
+		}, &config.Flag{
+			Name: "dod_service.userinfo_endpoint",
+			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
+				flagSet.String(flagName, "", "Endpoint to hit to get the userinfo from the bearer token")
+			},
+			Required: true,
+			AssignFunc: func(flagName string) {
+				dodServiceUserinfoEndpoint = viper.GetString(flagName)
 			},
 		}, &config.Flag{
 			Name: "dod_service.jwt_pub_key_url",
@@ -45,6 +55,9 @@ func init() {
 
 func DodServicePort() int {
 	return dodServicePort
+}
+func DodServiceUserinfoEndpoint() string {
+	return dodServiceUserinfoEndpoint
 }
 func DodServiceJwtPubKeyUrl() string {
 	return dodServiceJwtPubKeyUrl

@@ -4,12 +4,13 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"path"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,8 +40,6 @@ type cacheEntry struct {
 	files         []*origin_dataset_file_loader.FileInfo
 }
 
-var queries = make(map[string]string)
-
 func NewMetadataSubmitterDatabase(ctx context.Context) (origin_dataset_file_loader.OriginDatasetFileLoader, error) {
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -48,6 +47,7 @@ func NewMetadataSubmitterDatabase(ctx context.Context) (origin_dataset_file_load
 		client: http.DefaultClient,
 		ctx:    ctx,
 		cancel: cancel,
+		cache:  make(map[string]*cacheEntry),
 	}, nil
 }
 
@@ -55,7 +55,13 @@ func (mdc *metadataSubmitterClient) Ping(ctx context.Context) error {
 	if mdc == nil {
 		return errors.New("metadata submitter client not initialized")
 	}
-	rsp, err := mdc.client.Get(path.Join(metadataSubmitterURL, "health"))
+
+	heathURL, err := url.JoinPath(metadataSubmitterURL, "health")
+	if err != nil {
+		return fmt.Errorf("failed to build health API path: %w", err)
+	}
+
+	rsp, err := mdc.client.Get(heathURL)
 	if err != nil {
 		return err
 	}
@@ -115,7 +121,11 @@ func (mdc *metadataSubmitterClient) getDatasetMetadata(ctx context.Context, data
 		return entry, nil
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, path.Join(metadataSubmitterURL, "sync", datasetAccession), nil)
+	syncUrl, err := url.JoinPath(metadataSubmitterURL, "sync", datasetAccession)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build sync API path: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, syncUrl, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build http request: %w", err)
 	}
@@ -161,43 +171,57 @@ func (mdc *metadataSubmitterClient) getDatasetMetadata(ctx context.Context, data
 			return nil, fmt.Errorf("failed to open file %s from zip reader: %w", f.Name, err)
 		}
 
-		xmlDecoder := xml.NewDecoder(rc)
 		switch f.Name {
-		case "dataset.xml":
+		case "METADATA/dataset.xml":
+			xmlDecoder := xml.NewDecoder(rc)
 			err = xmlDecoder.Decode(&entry.originDataset.Dataset)
-		case "image.xml":
+		case "METADATA/image.xml":
+			xmlDecoder := xml.NewDecoder(rc)
 			err = xmlDecoder.Decode(&entry.originDataset.Image)
-		case "annotation.xml":
+		case "METADATA/annotation.xml":
+			xmlDecoder := xml.NewDecoder(rc)
 			err = xmlDecoder.Decode(&entry.originDataset.Annotation)
-		case "observation.xml":
+		case "METADATA/observation.xml":
+			xmlDecoder := xml.NewDecoder(rc)
 			err = xmlDecoder.Decode(&entry.originDataset.Observation)
-		case "observer.xml":
+		case "METADATA/observer.xml":
+			xmlDecoder := xml.NewDecoder(rc)
 			err = xmlDecoder.Decode(&entry.originDataset.Observer)
-		case "policy.xml":
+		case "METADATA/policy.xml":
+			xmlDecoder := xml.NewDecoder(rc)
 			err = xmlDecoder.Decode(&entry.originDataset.Policy)
-		case "sample.xml":
+		case "METADATA/sample.xml":
+			xmlDecoder := xml.NewDecoder(rc)
 			err = xmlDecoder.Decode(&entry.originDataset.Sample)
-		case "staining.xml":
+		case "METADATA/staining.xml":
+			xmlDecoder := xml.NewDecoder(rc)
 			err = xmlDecoder.Decode(&entry.originDataset.Staining)
-		case "rems.xml":
-			var remsEntry metadata_models.Rems
+		case "METADATA/rems.xml":
+			xmlDecoder := xml.NewDecoder(rc)
+			var remsEntry metadata_models.RemsSet
 			if err = xmlDecoder.Decode(&remsEntry); err != nil {
 				break
 			}
-			workflowID, err := strconv.Atoi(remsEntry.WorkflowId)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse rems workflow id to an integer: %w", err)
+			if len(remsEntry.Rems) != 1 {
+				err = errors.New("rems set has more than one rems entry")
+			}
+			workflowID, parseErr := strconv.Atoi(remsEntry.Rems[0].WorkflowId)
+			if parseErr != nil {
+				err = fmt.Errorf("failed to parse rems workflow id to an integer: %w", parseErr)
+
+				break
 			}
 			entry.originDataset.RemsWorkflowID = workflowID
-			entry.originDataset.RemsOrganisationID = remsEntry.OrganisationId
-		case "files.json":
+			entry.originDataset.RemsOrganisationID = remsEntry.Rems[0].OrganisationId
+		case "FILES/files.json":
 			type file struct {
-				FileID string `json:"file_id"`
+				FileID string `json:"fileId"`
 				Path   string `json:"path"`
 			}
 			var files []*file
 
-			if err = xmlDecoder.Decode(&files); err != nil {
+			jsonDecoder := json.NewDecoder(rc)
+			if err = jsonDecoder.Decode(&files); err != nil {
 				break
 			}
 			for _, f := range files {

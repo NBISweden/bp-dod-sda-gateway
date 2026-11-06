@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"embed"
 
@@ -17,7 +18,6 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file" // Imported to support using the embed migrationsFS as source for migrations
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/lib/pq"
-	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
@@ -121,7 +121,7 @@ func InitPostgresSQLDatabase(options ...func(config *dbConfig)) error {
 	for queryName, query := range queries {
 		preparedStmt, err := pg.db.Prepare(query)
 		if err != nil {
-			log.Errorf("failed to prepare query: %s, due to: %v", queryName, err)
+			slog.Error("failed to prepare query", slog.String("query", queryName), slog.Any("error", err))
 			_ = pg.Close()
 
 			return fmt.Errorf("failed to prepare query: %s, due to: %w", queryName, err)
