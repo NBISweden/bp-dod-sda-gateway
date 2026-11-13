@@ -12,14 +12,14 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-func (dmfh *onDemandDatasatCreationHandler) marshalEncryptAndUploadFile(ctx context.Context, filePath string, metadata any) error {
+func (oddch *onDemandDatasatCreationHandler) marshalEncryptAndUploadFile(ctx context.Context, filePath string, metadata any) error {
 	ctx, span := observability.StartSpan(ctx, "marshalEncryptAndUploadFile", attribute.String("file-path", filePath))
 	defer span.End()
 
 	reader, writer := io.Pipe()
 
 	go func() {
-		crypt4GHWriter, err := streaming.NewCrypt4GHWriterWithoutPrivateKey(writer, [][32]byte{dmfh.c4ghPublicKey}, nil)
+		crypt4GHWriter, err := streaming.NewCrypt4GHWriterWithoutPrivateKey(writer, [][32]byte{oddch.c4ghPublicKey}, nil)
 		if err != nil {
 			_ = writer.CloseWithError(err)
 
@@ -41,9 +41,9 @@ func (dmfh *onDemandDatasatCreationHandler) marshalEncryptAndUploadFile(ctx cont
 		_ = writer.Close()
 	}()
 
-	_, err := dmfh.transferManagerClient.UploadObject(ctx, &transfermanager.UploadObjectInput{
+	_, err := oddch.transferManagerClient.UploadObject(ctx, &transfermanager.UploadObjectInput{
 		Body:   reader,
-		Bucket: aws.String(dmfh.uploadUser),
+		Bucket: aws.String(oddch.uploadUser),
 		Key:    aws.String(filePath + ".c4gh"),
 	})
 	if err != nil {

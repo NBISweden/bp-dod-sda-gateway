@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"github.com/NBISweden/bp-dod-sda-gateway/models"
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
@@ -30,27 +31,28 @@ type Database interface {
 type functions interface {
 	GetOriginDataset(ctx context.Context, accession string) (*models.OriginDataset, error)
 	GetOriginDatasetAccessionFromImageAccession(ctx context.Context, imageAccession string) (string, error)
-	InsertOriginDataset(ctx context.Context, originDataset *models.OriginDataset) error
+	UpsertOriginDataset(ctx context.Context, originDataset *models.OriginDataset) error
+	UpsertDatasetImage(ctx context.Context, datasetAccession, imageAccession string) error
+	UpsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error
 
 	InsertOnDemandDataset(ctx context.Context, onDemandDataset *models.OnDemandDataset, imageAccessionHash string) error
 	InsertOnDemandDatasetImage(ctx context.Context, onDemandDatasetAccession, imageAccession string) error
-
-	InsertDatasetImage(ctx context.Context, datasetAccession, imageAccession string) error
-	InsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error
+	ListOnDemandDatasetImageFiles(ctx context.Context, datasetAccession string) (map[string]map[string]string, error)
 
 	ListUnreleasedOnDemandDatasetMetadataFiles(ctx context.Context) (map[string]map[metadata_models.MetadataFileType]string, error)
-
-	ListOnDemandDatasetImageFiles(ctx context.Context, datasetAccession string) (map[string]map[string]string, error)
 
 	GetOnDemandDatasetRemsMetadata(ctx context.Context, datasetAccession string) (*metadata_models.RemsSet, error)
 	GetOnDemandDatasetFromImageAccessionsHash(ctx context.Context, imageAccessionHash string) (string, bool, error)
 	IsOnDemandDatasetReleased(ctx context.Context, dodDatasetAccession string) (bool, error)
 
 	SetOnDemandDatasetReleased(ctx context.Context, datasetAccession string) error
-
 	InsertOnDemandDatasetRequest(ctx context.Context, user, email, datasetAccession, label string) error
+
 	ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*models.OnDemandDatasetRequest, error)
 	ListUserEmailsByDatasetAccession(ctx context.Context, datasetAccession string) ([]string, error)
+
+	GetOriginDatasetSyncCursor(ctx context.Context) (time.Time, error)
+	SetOriginDatasetSyncCursor(ctx context.Context, cursor time.Time) error
 }
 
 var db Database
@@ -102,4 +104,11 @@ func ListUsersOnDemandDatasetRequests(ctx context.Context, user string) ([]*mode
 }
 func ListUserEmailsByDatasetAccession(ctx context.Context, datasetAccession string) ([]string, error) {
 	return db.ListUserEmailsByDatasetAccession(ctx, datasetAccession)
+}
+
+func GetOriginDatasetSyncCursor(ctx context.Context) (time.Time, error) {
+	return db.GetOriginDatasetSyncCursor(ctx)
+}
+func SetOriginDatasetSyncCursor(ctx context.Context, cursor time.Time) error {
+	return db.SetOriginDatasetSyncCursor(ctx, cursor)
 }

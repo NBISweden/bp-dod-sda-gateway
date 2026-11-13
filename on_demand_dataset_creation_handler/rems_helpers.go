@@ -39,13 +39,13 @@ type organization struct {
 	OrganizationID string `json:"organization/id"`
 }
 
-func (dmfh *onDemandDatasatCreationHandler) doRemsRequest(_ context.Context, req *http.Request) ([]byte, error) {
+func (oddch *onDemandDatasatCreationHandler) doRemsRequest(_ context.Context, req *http.Request) ([]byte, error) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Rems-Api-Key", remsKey)
 	req.Header.Set("X-Rems-User-Id", remsUser)
 
-	resp, err := dmfh.httpClient.Do(req)
+	resp, err := oddch.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("http request: %w", err)
 	}
@@ -63,7 +63,7 @@ func (dmfh *onDemandDatasatCreationHandler) doRemsRequest(_ context.Context, req
 
 	return body, nil
 }
-func (dmfh *onDemandDatasatCreationHandler) createRemsResource(ctx context.Context, remsMetadata *metadata_models.RemsSet, datasetAccession string) (int, error) {
+func (oddch *onDemandDatasatCreationHandler) createRemsResource(ctx context.Context, remsMetadata *metadata_models.RemsSet, datasetAccession string) (int, error) {
 	ctx, span := observability.StartSpan(ctx, "createRemsResource")
 	defer span.End()
 
@@ -83,7 +83,7 @@ func (dmfh *onDemandDatasatCreationHandler) createRemsResource(ctx context.Conte
 		return -1, fmt.Errorf("failed to build resources get request: %w", err)
 	}
 
-	resourcesGetResponseBody, err := dmfh.doRemsRequest(ctx, resourceGetRequest)
+	resourcesGetResponseBody, err := oddch.doRemsRequest(ctx, resourceGetRequest)
 	if err != nil {
 		return -1, fmt.Errorf("failed to do request to rems: %w", err)
 	}
@@ -103,11 +103,11 @@ func (dmfh *onDemandDatasatCreationHandler) createRemsResource(ctx context.Conte
 
 	createReq := resourcesCreateReq{
 		ResourceID: datasetAccession,
+		Organization: organization{
+			OrganizationID: remsMetadata.Rems[0].OrganisationId,
+		},
 	}
-	// TODO how to create resource from multiple orgs???
-	for _, rems := range remsMetadata.Rems {
-		createReq.Organization.OrganizationID = rems.OrganisationId
-	}
+
 	// Override values from rems.xml with hardcoded values when connected to a Demo rems instance
 	if remsDemoOrganisationId != "" {
 		createReq.Organization.OrganizationID = remsDemoOrganisationId
@@ -128,7 +128,7 @@ func (dmfh *onDemandDatasatCreationHandler) createRemsResource(ctx context.Conte
 		return -1, fmt.Errorf("failed to build resources create request: %w", err)
 	}
 
-	resourcesCreateResponseBody, err := dmfh.doRemsRequest(ctx, resourcesCreateRequest)
+	resourcesCreateResponseBody, err := oddch.doRemsRequest(ctx, resourcesCreateRequest)
 	if err != nil {
 		return -1, err
 	}
@@ -144,7 +144,7 @@ func (dmfh *onDemandDatasatCreationHandler) createRemsResource(ctx context.Conte
 	return resourcesCreateParsedResp.Id, nil
 }
 
-func (dmfh *onDemandDatasatCreationHandler) createRemsCatalogueItem(ctx context.Context, remsMetadata *metadata_models.RemsSet, datasetAccession string, remsResourceID int) error {
+func (oddch *onDemandDatasatCreationHandler) createRemsCatalogueItem(ctx context.Context, remsMetadata *metadata_models.RemsSet, datasetAccession string, remsResourceID int) error {
 	ctx, span := observability.StartSpan(ctx, "createRemsCatalogueItem")
 	defer span.End()
 
@@ -163,7 +163,7 @@ func (dmfh *onDemandDatasatCreationHandler) createRemsCatalogueItem(ctx context.
 		return fmt.Errorf("failed to build catalogue items get request: %w", err)
 	}
 
-	catalogueItemsGetResponseBody, err := dmfh.doRemsRequest(ctx, catalogueItemsGetRequest)
+	catalogueItemsGetResponseBody, err := oddch.doRemsRequest(ctx, catalogueItemsGetRequest)
 	if err != nil {
 		return fmt.Errorf("failed to do request to rems: %w", err)
 	}
@@ -181,6 +181,11 @@ func (dmfh *onDemandDatasatCreationHandler) createRemsCatalogueItem(ctx context.
 		return nil
 	}
 
+	workflowID, err := strconv.Atoi(remsMetadata.Rems[0].WorkflowId)
+	if err != nil {
+		return fmt.Errorf("failed to parse workflow id: %w", err)
+	}
+
 	ciCreateReq := &catalogueItemsCreateReq{
 		ResourceID: remsResourceID,
 		Localizations: localizations{
@@ -188,16 +193,10 @@ func (dmfh *onDemandDatasatCreationHandler) createRemsCatalogueItem(ctx context.
 				Title: fmt.Sprintf("On Demand Dataset: %s", datasetAccession),
 			},
 		},
-	}
-
-	// TODO how to create resource from multiple orgs???
-	for _, rems := range remsMetadata.Rems {
-		ciCreateReq.Organization.OrganizationID = rems.OrganisationId
-		workflowID, err := strconv.Atoi(rems.WorkflowId)
-		if err != nil {
-			return fmt.Errorf("failed to parse workflow id: %w", err)
-		}
-		ciCreateReq.WorkflowID = workflowID
+		Organization: organization{
+			OrganizationID: remsMetadata.Rems[0].OrganisationId,
+		},
+		WorkflowID: workflowID,
 	}
 
 	// Override values from rems.xml with hardcoded values when connected to a Demo rems instance
@@ -230,7 +229,7 @@ func (dmfh *onDemandDatasatCreationHandler) createRemsCatalogueItem(ctx context.
 		return fmt.Errorf("failed to build catalogue items create request: %w", err)
 	}
 
-	if _, err := dmfh.doRemsRequest(ctx, req); err != nil {
+	if _, err := oddch.doRemsRequest(ctx, req); err != nil {
 		return err
 	}
 

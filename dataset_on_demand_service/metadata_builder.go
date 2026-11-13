@@ -1,4 +1,4 @@
-package dataset_on_demand
+package dataset_on_demand_service
 
 import (
 	"context"
@@ -16,6 +16,8 @@ import (
 func buildOnDemandDataset(ctx context.Context, originDatasets map[string]*models.OriginDataset, datasetImages map[string]map[string]struct{}) *models.OnDemandDataset {
 	_, span := observability.StartSpan(ctx, "buildOnDemandDataset")
 	defer span.End()
+
+	// TODO md standard v3
 
 	datasetAccession := accession.GenerateAccession(accession.Dataset)
 

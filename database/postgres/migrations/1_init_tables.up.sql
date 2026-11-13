@@ -14,10 +14,19 @@ CREATE TABLE IF NOT EXISTS origin_dataset
   registered_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp()
 );
 
+CREATE TABLE IF NOT EXISTS origin_dataset_sync_cursor
+(
+  -- Enforce just one row
+  id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id = TRUE),
+  cursor                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT '1970-01-01T00:00:00Z'
+);
+INSERT INTO origin_dataset_sync_cursor DEFAULT VALUES;
+
 CREATE TABLE IF NOT EXISTS dataset_image
 (
   accession         TEXT NOT NULL PRIMARY KEY,
-  dataset_accession TEXT NOT NULL REFERENCES origin_dataset (accession)
+  dataset_accession TEXT NOT NULL REFERENCES origin_dataset (accession),
+  removed_from_dataset BOOLEAN NOT NULL DEFAULT FALSE
 );
 CREATE TABLE IF NOT EXISTS image_file
 (

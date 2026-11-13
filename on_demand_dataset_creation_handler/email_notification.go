@@ -1,8 +1,11 @@
 package on_demand_dataset_creation_handler
 
 import (
+	"bytes"
 	"context"
+	"embed"
 	"fmt"
+	"html/template"
 	"log/slog"
 
 	"github.com/NBISweden/bp-dod-sda-gateway/database"
@@ -13,14 +16,10 @@ import (
 
 const (
 	notificationEmailSubject = "On Demand Dataset: %s ready for REMS access request"
-	notificationEmailBody    = `
-The On Demand Dataset you requested: %[1]s is ready for REMS access request.
-
-Go to https://%[2]s/apply-for?resource=%[1]s to create your access request application.
-
-This is an automated email.
-`
 )
+
+//go:embed email_notification_template.html
+var emailNotificationTemplate embed.FS
 
 func sendEmailNotifications(ctx context.Context, datasetAccession string) error {
 	if !emailRemsNotification {
@@ -29,6 +28,11 @@ func sendEmailNotifications(ctx context.Context, datasetAccession string) error 
 
 	ctx, span := observability.StartSpan(ctx, "sendEmailNotifications", attribute.String("accession", datasetAccession))
 	defer span.End()
+
+	userEmails, err := database.ListUserEmailsByDatasetAccession(ctx, datasetAccession)
+	if err != nil {
+		return fmt.Errorf("failed to list users who requested dataset creation: %w", err)
+	}
 
 	client, err := gomail.NewClient(
 		emailSmtpHost,
@@ -45,11 +49,6 @@ func sendEmailNotifications(ctx context.Context, datasetAccession string) error 
 			span.Warn("failed to close stmp client", slog.Any("error", err))
 		}
 	}()
-
-	userEmails, err := database.ListUserEmailsByDatasetAccession(ctx, datasetAccession)
-	if err != nil {
-		return fmt.Errorf("failed to list users who requested dataset creation: %w", err)
-	}
 
 	// No erroring during loop, as we do not want failed delivery to stop attempt to deliver to other users
 	for _, recipient := range userEmails {
@@ -78,12 +77,27 @@ func buildEmail(datasetAccession, recipient string) (*gomail.Msg, error) {
 
 	m.Subject(fmt.Sprintf(notificationEmailSubject, datasetAccession))
 
-	m.SetBodyString("text/html", fmt.Sprintf(notificationEmailBody, datasetAccession, remsUrl))
+	tmpl, err := template.ParseFS(emailNotificationTemplate, "email_notification_template.html")
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, &struct {
+		DatasetID string
+		RemsUrl   string
+	}{
+		DatasetID: datasetAccession,
+		RemsUrl:   remsUrl,
+	}); err != nil {
+		return nil, err
+	}
+
+	m.SetBodyString("text/html", buf.String())
 
 	return m, nil
 }
 
-func (dmfh *onDemandDatasatCreationHandler) SendUserEmailNotification(ctx context.Context, datasetAccession, recipient string) error {
+func (oddch *onDemandDatasatCreationHandler) SendUserEmailNotification(ctx context.Context, datasetAccession, recipient string) error {
 	if !emailRemsNotification {
 		return nil
 	}

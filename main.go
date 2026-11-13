@@ -15,13 +15,11 @@ import (
 	"connectrpc.com/authn"
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
-	"github.com/NBISweden/bp-dod-sda-gateway/config"
 	"github.com/NBISweden/bp-dod-sda-gateway/database"
 	"github.com/NBISweden/bp-dod-sda-gateway/database/postgres"
-	"github.com/NBISweden/bp-dod-sda-gateway/dataset_on_demand"
-	"github.com/NBISweden/bp-dod-sda-gateway/dataset_on_demand_admin"
+	"github.com/NBISweden/bp-dod-sda-gateway/dataset_on_demand_service"
 	"github.com/NBISweden/bp-dod-sda-gateway/on_demand_dataset_creation_handler"
-	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader/metadata_submitter"
+	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_sync"
 	"github.com/NBISweden/bp-dod-sda-gateway/pkg/auth_interceptor"
 	configpkg "github.com/NBISweden/bp-dod-sda-gateway/pkg/config"
 	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
@@ -69,15 +67,11 @@ func run() error {
 		return fmt.Errorf("failed to init dod metadata file handler: %w", err)
 	}
 
-	msdb, err := metadata_submitter.NewMetadataSubmitterDatabase(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to init metadata submitter database: %w", err)
+	if err := origin_dataset_sync.Init(ctx); err != nil {
+		return fmt.Errorf("failed to init origin dataset sync: %w", err)
 	}
-	defer func() {
-		_ = msdb.Close()
-	}()
 
-	authenticator, err := auth_interceptor.NewAuthenticator(config.DodServiceJwtPubKeyUrl())
+	authenticator, err := auth_interceptor.NewAuthenticator()
 	if err != nil {
 		return fmt.Errorf("failed to init authenticator: %w", err)
 	}
@@ -85,10 +79,8 @@ func run() error {
 		authenticator.Authenticate,
 	)
 
-	dodServer, err := dataset_on_demand.NewServer(
-		dataset_on_demand.Config{
-			UserinfoEndpoint:       config.DodServiceUserinfoEndpoint(),
-			Port:                   config.DodServicePort(),
+	dodServer, err := dataset_on_demand_service.NewServer(
+		dataset_on_demand_service.Config{
 			AuthMiddleware:         authMiddleware,
 			ConnectRPCInterceptors: []connect.Interceptor{otelInterceptor},
 		},
@@ -96,11 +88,9 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to init dod service impl: %w", err)
 	}
-	dodAdminServer, err := dataset_on_demand_admin.NewServer(
-		dataset_on_demand_admin.Config{
-			Port:                    config.DodAdminServicePort(),
-			ConnectRPCInterceptors:  []connect.Interceptor{otelInterceptor},
-			OriginDatasetFileLoader: msdb,
+	dodAdminServer, err := origin_dataset_sync.NewServer(
+		origin_dataset_sync.Config{
+			ConnectRPCInterceptors: []connect.Interceptor{otelInterceptor},
 		},
 	)
 	if err != nil {
@@ -145,10 +135,7 @@ func run() error {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	slog.Info("bp-dod-sda-gateway started",
-		"dod-port", config.DodServicePort(),
-		"dod-admin-port", config.DodAdminServicePort(),
-	)
+	slog.Info("bp-dod-sda-gateway started")
 
 	select {
 	case sig := <-sigc:

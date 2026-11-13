@@ -1,4 +1,4 @@
-package dataset_on_demand
+package dataset_on_demand_service
 
 import (
 	"context"

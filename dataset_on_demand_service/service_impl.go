@@ -1,4 +1,4 @@
-package dataset_on_demand
+package dataset_on_demand_service
 
 import (
 	"context"
@@ -26,8 +26,7 @@ import (
 )
 
 type serviceImpl struct {
-	UserinfoEndpoint string
-	lsAAIHttpClient  *http.Client
+	lsAAIHttpClient *http.Client
 }
 
 func (d *serviceImpl) RequestDatasetCreation(ctx context.Context, c *connect.Request[dodservice.RequestDatasetCreationRequest]) (*connect.Response[dodservice.RequestDatasetCreationResponse], error) {
@@ -335,7 +334,7 @@ func (d *serviceImpl) ListMyOnDemandDatasets(ctx context.Context, c *connect.Req
 }
 
 func (d *serviceImpl) getUserEmail(ctx context.Context, userToken string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.UserinfoEndpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, userinfoEndpoint, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create new request: %w", err)
 	}

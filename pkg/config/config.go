@@ -147,10 +147,13 @@ func Load() error {
 		flag.AssignFunc(flag.Name)
 	}
 
-	// TODO log format
 	slogLevel := slogLogLevelFromString(viper.GetString("log.level"))
-	_ = slog.SetLogLoggerLevel(slogLevel)
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slogLevel,
+	})))
+
 	slog.Info("log level set", slog.String("level", slogLevel.String()))
+
 	return nil
 }
 

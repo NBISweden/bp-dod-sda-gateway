@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"embed"
 
@@ -209,16 +210,16 @@ func (db *pgDb) getPreparedStmt(tx *sql.Tx, queryName string) (*sql.Stmt, error)
 	return tx.Stmt(stmt), nil
 }
 
-func (db *pgDb) InsertOriginDataset(ctx context.Context, originDataset *models.OriginDataset) error {
-	return db.insertOriginDataset(ctx, nil, originDataset)
+func (db *pgDb) UpsertOriginDataset(ctx context.Context, originDataset *models.OriginDataset) error {
+	return db.upsertOriginDataset(ctx, nil, originDataset)
 }
 
-func (db *pgDb) InsertDatasetImage(ctx context.Context, datasetAccession, imageAccession string) error {
-	return db.insertDatasetImage(ctx, nil, datasetAccession, imageAccession)
+func (db *pgDb) UpsertDatasetImage(ctx context.Context, datasetAccession, imageAccession string) error {
+	return db.upsertDatasetImage(ctx, nil, datasetAccession, imageAccession)
 }
 
-func (db *pgDb) InsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error {
-	return db.insertImageFile(ctx, nil, datasetAccession, imageAccession, fileAccession, baseFileName)
+func (db *pgDb) UpsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error {
+	return db.upsertImageFile(ctx, nil, datasetAccession, imageAccession, fileAccession, baseFileName)
 }
 
 func (db *pgDb) GetOriginDatasetAccessionFromImageAccession(ctx context.Context, imageAccession string) (string, error) {
@@ -269,4 +270,12 @@ func (db *pgDb) ListUsersOnDemandDatasetRequests(ctx context.Context, user strin
 
 func (db *pgDb) ListUserEmailsByDatasetAccession(ctx context.Context, datasetAccession string) ([]string, error) {
 	return db.listUserEmailsByDatasetAccession(ctx, nil, datasetAccession)
+}
+
+func (db *pgDb) GetOriginDatasetSyncCursor(ctx context.Context) (time.Time, error) {
+	return db.getOriginDatasetSyncCursor(ctx, nil)
+}
+
+func (db *pgDb) SetOriginDatasetSyncCursor(ctx context.Context, cursor time.Time) error {
+	return db.setOriginDatasetSyncCursor(ctx, nil, cursor)
 }

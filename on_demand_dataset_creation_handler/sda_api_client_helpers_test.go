@@ -7,11 +7,162 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/NBISweden/bp-dod-sda-gateway/database"
+	"github.com/NBISweden/bp-dod-sda-gateway/models"
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+type mockDatabase struct {
+	mock.Mock
+}
+
+func (m *mockDatabase) Commit() error {
+	args := m.Called()
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) Rollback() error {
+	args := m.Called()
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) BeginTransaction(_ context.Context) (database.Transaction, error) {
+	args := m.Called()
+
+	return args.Get(0).(*mockDatabase), args.Error(1)
+}
+
+func (m *mockDatabase) Close() error {
+	args := m.Called()
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) SchemaVersion() (uint, error) {
+	args := m.Called()
+
+	return args.Get(0).(uint), args.Error(1)
+}
+
+func (m *mockDatabase) Ping(_ context.Context) error {
+	args := m.Called()
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) GetOriginDataset(_ context.Context, accession string) (*models.OriginDataset, error) {
+	args := m.Called(accession)
+
+	return args.Get(0).(*models.OriginDataset), args.Error(1)
+}
+
+func (m *mockDatabase) GetOriginDatasetAccessionFromImageAccession(_ context.Context, imageAccession string) (string, error) {
+	args := m.Called(imageAccession)
+
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockDatabase) UpsertOriginDataset(_ context.Context, originDataset *models.OriginDataset) error {
+	args := m.Called(originDataset.Accession, originDataset.RemsWorkflowID, originDataset.RemsOrganisationID)
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) InsertOnDemandDataset(_ context.Context, onDemandDataset *models.OnDemandDataset, imageAccessionHash string) error {
+	args := m.Called(onDemandDataset.Accession, imageAccessionHash)
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) InsertOnDemandDatasetImage(_ context.Context, onDemandDatasetAccession, imageAccession string) error {
+	args := m.Called(onDemandDatasetAccession, imageAccession)
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) UpsertDatasetImage(_ context.Context, datasetAccession, imageAccession string) error {
+	args := m.Called(datasetAccession, imageAccession)
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) UpsertImageFile(_ context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error {
+	args := m.Called(datasetAccession, imageAccession, fileAccession, baseFileName)
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) ListUnreleasedOnDemandDatasetMetadataFiles(_ context.Context) (map[string]map[metadata_models.MetadataFileType]string, error) {
+	args := m.Called()
+
+	return args.Get(0).(map[string]map[metadata_models.MetadataFileType]string), args.Error(1)
+}
+
+func (m *mockDatabase) ListOnDemandDatasetImageFiles(_ context.Context, datasetAccession string) (map[string]map[string]string, error) {
+	args := m.Called(datasetAccession)
+
+	return args.Get(0).(map[string]map[string]string), args.Error(1)
+}
+
+func (m *mockDatabase) GetOnDemandDatasetRemsMetadata(_ context.Context, datasetAccession string) (*metadata_models.RemsSet, error) {
+	args := m.Called(datasetAccession)
+
+	return args.Get(0).(*metadata_models.RemsSet), args.Error(1)
+}
+
+func (m *mockDatabase) GetOnDemandDatasetFromImageAccessionsHash(_ context.Context, imageAccessionHash string) (string, bool, error) {
+	args := m.Called(imageAccessionHash)
+
+	return args.String(0), args.Bool(1), args.Error(2)
+}
+
+func (m *mockDatabase) IsOnDemandDatasetReleased(_ context.Context, dodDatasetAccession string) (bool, error) {
+	args := m.Called(dodDatasetAccession)
+
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockDatabase) SetOnDemandDatasetReleased(_ context.Context, datasetAccession string) error {
+	args := m.Called(datasetAccession)
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) InsertOnDemandDatasetRequest(_ context.Context, user, email, datasetAccession, label string) error {
+	args := m.Called(user, email, datasetAccession, label)
+
+	return args.Error(0)
+}
+
+func (m *mockDatabase) ListUsersOnDemandDatasetRequests(_ context.Context, user string) ([]*models.OnDemandDatasetRequest, error) {
+	args := m.Called(user)
+
+	return args.Get(0).([]*models.OnDemandDatasetRequest), args.Error(1)
+}
+
+func (m *mockDatabase) ListUserEmailsByDatasetAccession(_ context.Context, datasetAccession string) ([]string, error) {
+	args := m.Called(datasetAccession)
+
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *mockDatabase) GetOriginDatasetSyncCursor(_ context.Context) (time.Time, error) {
+	args := m.Called()
+
+	return args.Get(0).(time.Time), args.Error(1)
+}
+
+func (m *mockDatabase) SetOriginDatasetSyncCursor(_ context.Context, cursor time.Time) error {
+	args := m.Called(cursor)
+
+	return args.Error(0)
+}
 
 type mockRoundTripper struct {
 	requestsSeen []datasetCreateReq
@@ -35,8 +186,8 @@ func TestTriggerDatasetCreation(t *testing.T) {
 	type testCase struct {
 		name                        string
 		datasetAccessionId          string
-		imageAccessionFileNames     map[string]map[string]string
 		metadataFiles               map[metadata_models.MetadataFileType]string
+		newMockDatabase             func() *mockDatabase
 		newMockRoundTripper         func() *mockRoundTripper
 		mockRoundTripperAssert      func(*testing.T, *mockRoundTripper)
 		datasetCreateFilesBatchSize int
@@ -46,13 +197,18 @@ func TestTriggerDatasetCreation(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{
-			name:                    "only_metadata_files_one_call",
-			datasetAccessionId:      "123",
-			imageAccessionFileNames: nil,
+			name:               "only_metadata_files_one_call",
+			datasetAccessionId: "123",
 			metadataFiles: map[metadata_models.MetadataFileType]string{
 				metadata_models.MetadataFileTypeDataset:     "1",
 				metadata_models.MetadataFileTypeImage:       "2",
 				metadata_models.MetadataFileTypeObservation: "3",
+			},
+			newMockDatabase: func() *mockDatabase {
+				md := new(mockDatabase)
+				md.On("ListOnDemandDatasetImageFiles", "123").Return(map[string]map[string]string{}, nil).Once()
+
+				return md
 			},
 			newMockRoundTripper: func() *mockRoundTripper {
 				mrt := &mockRoundTripper{}
@@ -81,24 +237,29 @@ func TestTriggerDatasetCreation(t *testing.T) {
 		}, {
 			name:               "no_metadata_files_multiple_calls",
 			datasetAccessionId: "123",
-			imageAccessionFileNames: map[string]map[string]string{
-				"image_1": {
-					"image_1_file_1": "path_to_image_1_file_1",
-					"image_1_file_2": "path_to_image_1_file_2",
-					"image_1_file_3": "path_to_image_1_file_3",
-				},
-				"image_2": {
-					"image_2_file_1": "path_to_image_2_file_1",
-					"image_2_file_2": "path_to_image_2_file_2",
-					"image_2_file_3": "path_to_image_2_file_3",
-				},
-				"image_3": {
-					"image_3_file_1": "path_to_image_3_file_1",
-					"image_3_file_2": "path_to_image_3_file_2",
-					"image_3_file_3": "path_to_image_3_file_3",
-				},
+			metadataFiles:      nil,
+			newMockDatabase: func() *mockDatabase {
+				md := new(mockDatabase)
+				md.On("ListOnDemandDatasetImageFiles", "123").Return(map[string]map[string]string{
+					"image_1": {
+						"image_1_file_1": "path_to_image_1_file_1",
+						"image_1_file_2": "path_to_image_1_file_2",
+						"image_1_file_3": "path_to_image_1_file_3",
+					},
+					"image_2": {
+						"image_2_file_1": "path_to_image_2_file_1",
+						"image_2_file_2": "path_to_image_2_file_2",
+						"image_2_file_3": "path_to_image_2_file_3",
+					},
+					"image_3": {
+						"image_3_file_1": "path_to_image_3_file_1",
+						"image_3_file_2": "path_to_image_3_file_2",
+						"image_3_file_3": "path_to_image_3_file_3",
+					},
+				}, nil).Once()
+
+				return md
 			},
-			metadataFiles: nil,
 			newMockRoundTripper: func() *mockRoundTripper {
 				mrt := &mockRoundTripper{}
 
@@ -139,22 +300,27 @@ func TestTriggerDatasetCreation(t *testing.T) {
 		}, {
 			name:               "1_call",
 			datasetAccessionId: "123",
-			imageAccessionFileNames: map[string]map[string]string{
-				"image_1": {
-					"image_1_file_1": "path_to_image_1_file_1",
-					"image_1_file_2": "path_to_image_1_file_2",
-					"image_1_file_3": "path_to_image_1_file_3",
-				},
-				"image_2": {
-					"image_2_file_1": "path_to_image_2_file_1",
-					"image_2_file_2": "path_to_image_2_file_2",
-					"image_2_file_3": "path_to_image_2_file_3",
-				},
-				"image_3": {
-					"image_3_file_1": "path_to_image_3_file_1",
-					"image_3_file_2": "path_to_image_3_file_2",
-					"image_3_file_3": "path_to_image_3_file_3",
-				},
+			newMockDatabase: func() *mockDatabase {
+				md := new(mockDatabase)
+				md.On("ListOnDemandDatasetImageFiles", "123").Return(map[string]map[string]string{
+					"image_1": {
+						"image_1_file_1": "path_to_image_1_file_1",
+						"image_1_file_2": "path_to_image_1_file_2",
+						"image_1_file_3": "path_to_image_1_file_3",
+					},
+					"image_2": {
+						"image_2_file_1": "path_to_image_2_file_1",
+						"image_2_file_2": "path_to_image_2_file_2",
+						"image_2_file_3": "path_to_image_2_file_3",
+					},
+					"image_3": {
+						"image_3_file_1": "path_to_image_3_file_1",
+						"image_3_file_2": "path_to_image_3_file_2",
+						"image_3_file_3": "path_to_image_3_file_3",
+					},
+				}, nil).Once()
+
+				return md
 			},
 			metadataFiles: map[metadata_models.MetadataFileType]string{
 				metadata_models.MetadataFileTypeDataset:     "1",
@@ -200,22 +366,27 @@ func TestTriggerDatasetCreation(t *testing.T) {
 		}, {
 			name:               "many_calls",
 			datasetAccessionId: "123",
-			imageAccessionFileNames: map[string]map[string]string{
-				"image_1": {
-					"image_1_file_1": "path_to_image_1_file_1",
-					"image_1_file_2": "path_to_image_1_file_2",
-					"image_1_file_3": "path_to_image_1_file_3",
-				},
-				"image_2": {
-					"image_2_file_1": "path_to_image_2_file_1",
-					"image_2_file_2": "path_to_image_2_file_2",
-					"image_2_file_3": "path_to_image_2_file_3",
-				},
-				"image_3": {
-					"image_3_file_1": "path_to_image_3_file_1",
-					"image_3_file_2": "path_to_image_3_file_2",
-					"image_3_file_3": "path_to_image_3_file_3",
-				},
+			newMockDatabase: func() *mockDatabase {
+				md := new(mockDatabase)
+				md.On("ListOnDemandDatasetImageFiles", "123").Return(map[string]map[string]string{
+					"image_1": {
+						"image_1_file_1": "path_to_image_1_file_1",
+						"image_1_file_2": "path_to_image_1_file_2",
+						"image_1_file_3": "path_to_image_1_file_3",
+					},
+					"image_2": {
+						"image_2_file_1": "path_to_image_2_file_1",
+						"image_2_file_2": "path_to_image_2_file_2",
+						"image_2_file_3": "path_to_image_2_file_3",
+					},
+					"image_3": {
+						"image_3_file_1": "path_to_image_3_file_1",
+						"image_3_file_2": "path_to_image_3_file_2",
+						"image_3_file_3": "path_to_image_3_file_3",
+					},
+				}, nil).Once()
+
+				return md
 			},
 			metadataFiles: map[metadata_models.MetadataFileType]string{
 				metadata_models.MetadataFileTypeDataset:     "1",
@@ -304,16 +475,19 @@ func TestTriggerDatasetCreation(t *testing.T) {
 				datasetCreateFilesBatchSize = old
 			})
 
+			mockDb := tc.newMockDatabase()
+			database.RegisterDatabase(mockDb)
+
 			filesToBeCreated, err := dmfhTester.triggerDatasetCreation(
 				context.Background(),
 				tc.datasetAccessionId,
 				tc.metadataFiles,
-				tc.imageAccessionFileNames,
 			)
 			assert.Equal(t, tc.expectedError, err)
 			assert.Equal(t, tc.expectedFilesToBeCreated, filesToBeCreated)
 
 			tc.mockRoundTripperAssert(t, mrt)
+			mockDb.AssertExpectations(t)
 		})
 	}
 }

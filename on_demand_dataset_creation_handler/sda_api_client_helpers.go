@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/NBISweden/bp-dod-sda-gateway/database"
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
 	"github.com/NBISweden/bp-dod-sda-gateway/pkg/observability"
 	"go.opentelemetry.io/otel/attribute"
@@ -23,7 +24,7 @@ type fileInfo struct {
 	Status    string `json:"fileStatus"`
 }
 
-func (dmfh *onDemandDatasatCreationHandler) triggerFileIngest(ctx context.Context, datasetAccession string, metadataFileType metadata_models.MetadataFileType) error {
+func (oddch *onDemandDatasatCreationHandler) triggerFileIngest(ctx context.Context, datasetAccession string, metadataFileType metadata_models.MetadataFileType) error {
 	ctx, span := observability.StartSpan(ctx, "triggerFileIngest", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("metadata-file-type", metadataFileType.String()))
 	defer span.End()
 
@@ -37,7 +38,7 @@ func (dmfh *onDemandDatasatCreationHandler) triggerFileIngest(ctx context.Contex
 		User     string `json:"user"`
 	}{
 		FilePath: fmt.Sprintf("%s/METADATA/%s.xml.c4gh", datasetAccession, metadataFileType.String()),
-		User:     dmfh.uploadUser,
+		User:     oddch.uploadUser,
 	}
 
 	reqBody, err := json.Marshal(ingestReq)
@@ -52,7 +53,7 @@ func (dmfh *onDemandDatasatCreationHandler) triggerFileIngest(ctx context.Contex
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+inboxToken)
 
-	resp, err := dmfh.httpClient.Do(req)
+	resp, err := oddch.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("http request: %w", err)
 	}
@@ -69,7 +70,7 @@ func (dmfh *onDemandDatasatCreationHandler) triggerFileIngest(ctx context.Contex
 	return nil
 }
 
-func (dmfh *onDemandDatasatCreationHandler) triggerFileAccession(ctx context.Context, fileID, fileAccession string) error {
+func (oddch *onDemandDatasatCreationHandler) triggerFileAccession(ctx context.Context, fileID, fileAccession string) error {
 	ctx, span := observability.StartSpan(ctx, "triggerFileAccession", attribute.String("sda-api-url", sdaAPIUrl))
 	defer span.End()
 
@@ -92,7 +93,7 @@ func (dmfh *onDemandDatasatCreationHandler) triggerFileAccession(ctx context.Con
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+inboxToken)
 
-	resp, err := dmfh.httpClient.Do(req)
+	resp, err := oddch.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("http request: %w", err)
 	}
@@ -116,7 +117,7 @@ type datasetCreateReq struct {
 	FileDownloadPaths map[string]string `json:"file_download_paths"`
 }
 
-func (dmfh *onDemandDatasatCreationHandler) triggerDatasetCreation(ctx context.Context, datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string, imageAccessionFileNames map[string]map[string]string) (int, error) {
+func (oddch *onDemandDatasatCreationHandler) triggerDatasetCreation(ctx context.Context, datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) (int, error) {
 	ctx, span := observability.StartSpan(ctx, "triggerDatasetCreation", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession))
 	defer span.End()
 
@@ -133,6 +134,11 @@ func (dmfh *onDemandDatasatCreationHandler) triggerDatasetCreation(ctx context.C
 			continue
 		}
 		fileDownloadPaths[metadataFileAccession] = fmt.Sprintf("METADATA/%s.xml.c4gh", metadataType.String())
+	}
+
+	imageAccessionFileNames, err := database.ListOnDemandDatasetImageFileAccessions(ctx, datasetAccession)
+	if err != nil {
+		return 0, fmt.Errorf("failed to list on demand dataset image accessions: %w", err)
 	}
 
 	for imageAccession, imageFileNames := range imageAccessionFileNames {
@@ -160,7 +166,7 @@ func (dmfh *onDemandDatasatCreationHandler) triggerDatasetCreation(ctx context.C
 		dcr := &datasetCreateReq{
 			DatasetAccession:  datasetAccession,
 			FileAccessionIDs:  fileAccessionsInBatch,
-			User:              dmfh.uploadUser,
+			User:              oddch.uploadUser,
 			FileDownloadPaths: fileDownloadPathsInBatch,
 		}
 
@@ -176,7 +182,7 @@ func (dmfh *onDemandDatasatCreationHandler) triggerDatasetCreation(ctx context.C
 		req.Header.Set("Accept", "application/json")
 		req.Header.Set("Authorization", "Bearer "+inboxToken)
 
-		resp, err := dmfh.httpClient.Do(req)
+		resp, err := oddch.httpClient.Do(req)
 		if err != nil {
 			return 0, fmt.Errorf("http request: %w", err)
 		}
@@ -195,7 +201,7 @@ func (dmfh *onDemandDatasatCreationHandler) triggerDatasetCreation(ctx context.C
 
 var ErrDatasetNotFound = errors.New("dataset not found")
 
-func (dmfh *onDemandDatasatCreationHandler) getDatasetStatus(ctx context.Context, datasetAccession string) (string, int, error) {
+func (oddch *onDemandDatasatCreationHandler) getDatasetStatus(ctx context.Context, datasetAccession string) (string, int, error) {
 	ctx, span := observability.StartSpan(ctx, "getDatasetStatus", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession))
 	defer span.End()
 
@@ -211,7 +217,7 @@ func (dmfh *onDemandDatasatCreationHandler) getDatasetStatus(ctx context.Context
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+inboxToken)
 
-	resp, err := dmfh.httpClient.Do(req)
+	resp, err := oddch.httpClient.Do(req)
 	if err != nil {
 		return "", 0, fmt.Errorf("http request: %w", err)
 	}
@@ -241,7 +247,7 @@ func (dmfh *onDemandDatasatCreationHandler) getDatasetStatus(ctx context.Context
 	return parsedResp.Status, parsedResp.NumberOfFiles, nil
 }
 
-func (dmfh *onDemandDatasatCreationHandler) triggerDatasetRelease(ctx context.Context, datasetAccession string) error {
+func (oddch *onDemandDatasatCreationHandler) triggerDatasetRelease(ctx context.Context, datasetAccession string) error {
 	ctx, span := observability.StartSpan(ctx, "triggerDatasetRelease", attribute.String("sda-api-url", sdaAPIUrl), attribute.String("accession", datasetAccession))
 	defer span.End()
 
@@ -257,7 +263,7 @@ func (dmfh *onDemandDatasatCreationHandler) triggerDatasetRelease(ctx context.Co
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+inboxToken)
 
-	resp, err := dmfh.httpClient.Do(req)
+	resp, err := oddch.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("http request: %w", err)
 	}
@@ -274,7 +280,7 @@ func (dmfh *onDemandDatasatCreationHandler) triggerDatasetRelease(ctx context.Co
 	return nil
 }
 
-func (dmfh *onDemandDatasatCreationHandler) listMetadataFiles(ctx context.Context, datasetAccession string) ([]*fileInfo, error) {
+func (oddch *onDemandDatasatCreationHandler) listMetadataFiles(ctx context.Context, datasetAccession string) ([]*fileInfo, error) {
 	ctx, span := observability.StartSpan(ctx, "listMetadataFiles", attribute.String("sda-api-url", sdaAPIUrl))
 	defer span.End()
 
@@ -301,7 +307,7 @@ func (dmfh *onDemandDatasatCreationHandler) listMetadataFiles(ctx context.Contex
 		req.Header.Set("Accept", "application/json")
 		req.Header.Set("Authorization", "Bearer "+inboxToken)
 
-		resp, err := dmfh.httpClient.Do(req)
+		resp, err := oddch.httpClient.Do(req)
 		if err != nil {
 			return nil, "", fmt.Errorf("http request: %w", err)
 		}

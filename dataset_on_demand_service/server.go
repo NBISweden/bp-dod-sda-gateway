@@ -1,4 +1,4 @@
-package dataset_on_demand
+package dataset_on_demand_service
 
 import (
 	"context"
@@ -19,10 +19,8 @@ type Server struct {
 }
 
 type Config struct {
-	Port                   int
 	AuthMiddleware         *authn.Middleware
 	ConnectRPCInterceptors []connect.Interceptor
-	UserinfoEndpoint       string
 }
 
 func (d *Server) ListenAndServe() error {
@@ -36,17 +34,10 @@ func NewServer(config Config) (*Server, error) {
 	if config.AuthMiddleware == nil {
 		return nil, errors.New("no auth middleware provided")
 	}
-	if config.Port == 0 {
-		return nil, errors.New("no port provided")
-	}
-	if config.UserinfoEndpoint == "" {
-		return nil, errors.New("no ls-AAI userinfo endpoint provided")
-	}
 
 	mux := http.NewServeMux()
 	mux.Handle(publicdodservice.NewDatasetOnDemandServiceHandler(
 		&serviceImpl{
-			UserinfoEndpoint: config.UserinfoEndpoint,
 			lsAAIHttpClient: &http.Client{
 				Transport: otelhttp.NewTransport(http.DefaultTransport),
 			},
@@ -67,7 +58,7 @@ func NewServer(config Config) (*Server, error) {
 	p.SetUnencryptedHTTP2(true)
 	doDServer := &Server{
 		srv: &http.Server{
-			Addr:              fmt.Sprintf(":%d", config.Port),
+			Addr:              fmt.Sprintf(":%d", servicePort),
 			Handler:           config.AuthMiddleware.Wrap(mux),
 			Protocols:         p,
 			ReadHeaderTimeout: 20 * time.Second,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/NBISweden/bp-dod-sda-gateway/models"
 	"github.com/NBISweden/bp-dod-sda-gateway/models/metadata_models"
@@ -27,16 +28,16 @@ func (tx *pgTx) Rollback() error {
 	return err
 }
 
-func (tx *pgTx) InsertOriginDataset(ctx context.Context, originDataset *models.OriginDataset) error {
-	return tx.insertOriginDataset(ctx, tx.tx, originDataset)
+func (tx *pgTx) UpsertOriginDataset(ctx context.Context, originDataset *models.OriginDataset) error {
+	return tx.upsertOriginDataset(ctx, tx.tx, originDataset)
 }
 
-func (tx *pgTx) InsertDatasetImage(ctx context.Context, datasetAccession, imageAccession string) error {
-	return tx.insertDatasetImage(ctx, tx.tx, datasetAccession, imageAccession)
+func (tx *pgTx) UpsertDatasetImage(ctx context.Context, datasetAccession, imageAccession string) error {
+	return tx.upsertDatasetImage(ctx, tx.tx, datasetAccession, imageAccession)
 }
 
-func (tx *pgTx) InsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error {
-	return tx.insertImageFile(ctx, tx.tx, datasetAccession, imageAccession, fileAccession, baseFileName)
+func (tx *pgTx) UpsertImageFile(ctx context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error {
+	return tx.upsertImageFile(ctx, tx.tx, datasetAccession, imageAccession, fileAccession, baseFileName)
 }
 
 func (tx *pgTx) GetOriginDatasetAccessionFromImageAccession(ctx context.Context, imageAccession string) (string, error) {
@@ -86,4 +87,12 @@ func (tx *pgTx) ListUsersOnDemandDatasetRequests(ctx context.Context, user strin
 
 func (tx *pgTx) ListUserEmailsByDatasetAccession(ctx context.Context, datasetAccession string) ([]string, error) {
 	return tx.listUserEmailsByDatasetAccession(ctx, tx.tx, datasetAccession)
+}
+
+func (tx *pgTx) GetOriginDatasetSyncCursor(ctx context.Context) (time.Time, error) {
+	return tx.getOriginDatasetSyncCursor(ctx, tx.tx)
+}
+
+func (tx *pgTx) SetOriginDatasetSyncCursor(ctx context.Context, cursor time.Time) error {
+	return tx.setOriginDatasetSyncCursor(ctx, tx.tx, cursor)
 }

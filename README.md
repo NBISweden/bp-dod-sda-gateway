@@ -21,7 +21,7 @@ The bp-dod-sda-gateway integrates with:
 
 The bp-dod-sda-gateway hosts two [connectrpc](https://connectrpc.com/) servers
 The public [dataset_on_demand_service.proto](proto/public/v1/dataset_on_demand_service.proto), at port specified by  --dod_service.port flag.
-The private [dataset_on_demand_admin_service.proto](proto/private/v1/dataset_on_demand_admin_service.proto), at port specified by --dod_admin_service.port flag.
+The private [dataset_on_demand_admin_service.proto](proto/private/v1/origin_dataset_sync_service.proto), at port specified by --dod_admin_service.port flag.
 
 Protobuf code is generated with [buf](https://buf.build/) and the generated code is available at [grpc_gen](grpc_gen).
 

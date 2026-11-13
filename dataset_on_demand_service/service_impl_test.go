@@ -1,4 +1,4 @@
-package dataset_on_demand
+package dataset_on_demand_service
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/authn"
 	"connectrpc.com/connect"
@@ -99,7 +100,7 @@ func (m *mockDatabase) GetOriginDatasetAccessionFromImageAccession(_ context.Con
 	return args.String(0), args.Error(1)
 }
 
-func (m *mockDatabase) InsertOriginDataset(_ context.Context, originDataset *models.OriginDataset) error {
+func (m *mockDatabase) UpsertOriginDataset(_ context.Context, originDataset *models.OriginDataset) error {
 	args := m.Called(originDataset.Accession, originDataset.RemsWorkflowID, originDataset.RemsOrganisationID)
 
 	return args.Error(0)
@@ -117,13 +118,13 @@ func (m *mockDatabase) InsertOnDemandDatasetImage(_ context.Context, onDemandDat
 	return args.Error(0)
 }
 
-func (m *mockDatabase) InsertDatasetImage(_ context.Context, datasetAccession, imageAccession string) error {
+func (m *mockDatabase) UpsertDatasetImage(_ context.Context, datasetAccession, imageAccession string) error {
 	args := m.Called(datasetAccession, imageAccession)
 
 	return args.Error(0)
 }
 
-func (m *mockDatabase) InsertImageFile(_ context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error {
+func (m *mockDatabase) UpsertImageFile(_ context.Context, datasetAccession, imageAccession, fileAccession, baseFileName string) error {
 	args := m.Called(datasetAccession, imageAccession, fileAccession, baseFileName)
 
 	return args.Error(0)
@@ -181,6 +182,18 @@ func (m *mockDatabase) ListUserEmailsByDatasetAccession(_ context.Context, datas
 	args := m.Called(datasetAccession)
 
 	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *mockDatabase) GetOriginDatasetSyncCursor(_ context.Context) (time.Time, error) {
+	args := m.Called()
+
+	return args.Get(0).(time.Time), args.Error(1)
+}
+
+func (m *mockDatabase) SetOriginDatasetSyncCursor(_ context.Context, cursor time.Time) error {
+	args := m.Called(cursor)
+
+	return args.Error(0)
 }
 
 func TestRequestDatasetCreation(t *testing.T) {
@@ -856,7 +869,6 @@ func TestRequestDatasetCreation(t *testing.T) {
 			expectedError:       nil,
 			expectedNilResponse: false,
 		},
-		// TODO new test for email
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			mockDB := tc.mockDatabaseOn()

@@ -139,82 +139,82 @@ func Init(ctx context.Context) error {
 	return nil
 }
 
-func (dmfh *onDemandDatasatCreationHandler) RegisterOnDemandDatasetCreation(ctx context.Context, dodDataset *models.OnDemandDataset) error {
+func (oddch *onDemandDatasatCreationHandler) RegisterOnDemandDatasetCreation(ctx context.Context, dodDataset *models.OnDemandDataset) error {
 	ctx, span := observability.StartSpan(ctx, "RegisterOnDemandDataset", attribute.String("accession", dodDataset.Accession))
 	defer span.End()
 
-	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "dataset.xml"), dodDataset.DatasetMetadata.MetadataSet); err != nil {
+	if err := oddch.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "dataset.xml"), dodDataset.DatasetMetadata.MetadataSet); err != nil {
 		span.Error("failed to upload dataset xml", err)
 
 		return fmt.Errorf("failed to upload dataset xml: %w", err)
 	}
-	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "image.xml"), dodDataset.ImageMetadata.MetadataSet); err != nil {
+	if err := oddch.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "image.xml"), dodDataset.ImageMetadata.MetadataSet); err != nil {
 		span.Error("failed to upload image xml", err)
 
 		return fmt.Errorf("failed to upload image xml: %w", err)
 	}
-	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "observation.xml"), dodDataset.ObservationMetadata.MetadataSet); err != nil {
+	if err := oddch.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "observation.xml"), dodDataset.ObservationMetadata.MetadataSet); err != nil {
 		span.Error("failed to upload observation xml", err)
 
 		return fmt.Errorf("failed to upload observation xml: %w", err)
 	}
 	if dodDataset.ObserverMetadata != nil {
-		if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "observer.xml"), dodDataset.ObserverMetadata.MetadataSet); err != nil {
+		if err := oddch.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "observer.xml"), dodDataset.ObserverMetadata.MetadataSet); err != nil {
 			span.Error("failed to upload observer xml", err)
 
 			return fmt.Errorf("failed to upload observer xml: %w", err)
 		}
 	}
-	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "policy.xml"), dodDataset.PolicyMetadata.MetadataSet); err != nil {
+	if err := oddch.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "policy.xml"), dodDataset.PolicyMetadata.MetadataSet); err != nil {
 		span.Error("failed to upload policy xml", err)
 
 		return fmt.Errorf("failed to upload policy xml: %w", err)
 	}
-	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "sample.xml"), dodDataset.SampleMetadata.MetadataSet); err != nil {
+	if err := oddch.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "sample.xml"), dodDataset.SampleMetadata.MetadataSet); err != nil {
 		span.Error("failed to upload sample xml", err)
 
 		return fmt.Errorf("failed to upload sample xml: %w", err)
 	}
 
-	if err := dmfh.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "staining.xml"), dodDataset.StainingMetadata.MetadataSet); err != nil {
+	if err := oddch.marshalEncryptAndUploadFile(ctx, filepath.Join(dodDataset.Accession, "METADATA", "staining.xml"), dodDataset.StainingMetadata.MetadataSet); err != nil {
 		span.Error("failed to upload staining xml", err)
 
 		return fmt.Errorf("failed to upload staining xml: %w", err)
 	}
 
-	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.DatasetMetadata.MetadataFileType()); err != nil {
+	if err := oddch.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.DatasetMetadata.MetadataFileType()); err != nil {
 		span.Error("failed to trigger ingestion for dataset xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for dataset xml: %w", err)
 	}
-	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.ImageMetadata.MetadataFileType()); err != nil {
+	if err := oddch.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.ImageMetadata.MetadataFileType()); err != nil {
 		span.Error("failed to trigger ingestion for image xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for image xml: %w", err)
 	}
-	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.ObservationMetadata.MetadataFileType()); err != nil {
+	if err := oddch.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.ObservationMetadata.MetadataFileType()); err != nil {
 		span.Error("failed to trigger ingestion for observation xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for observation xml: %w", err)
 	}
 	if dodDataset.ObserverMetadata != nil {
-		if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.ObserverMetadata.MetadataFileType()); err != nil {
+		if err := oddch.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.ObserverMetadata.MetadataFileType()); err != nil {
 			span.Error("failed to trigger ingestion for observer xml", err)
 
 			return fmt.Errorf("failed to trigger ingestion for observer xml: %w", err)
 		}
 	}
-	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.PolicyMetadata.MetadataFileType()); err != nil {
+	if err := oddch.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.PolicyMetadata.MetadataFileType()); err != nil {
 		span.Error("failed to trigger ingestion for policy xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for policy xml: %w", err)
 	}
-	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.SampleMetadata.MetadataFileType()); err != nil {
+	if err := oddch.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.SampleMetadata.MetadataFileType()); err != nil {
 		span.Error("failed to trigger ingestion for sample xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for sample xml: %w", err)
 	}
-	if err := dmfh.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.StainingMetadata.MetadataFileType()); err != nil {
+	if err := oddch.triggerFileIngest(ctx, dodDataset.Accession, dodDataset.StainingMetadata.MetadataFileType()); err != nil {
 		span.Error("failed to trigger ingestion for staining xml", err)
 
 		return fmt.Errorf("failed to trigger ingestion for staining xml: %w", err)
@@ -232,20 +232,20 @@ func (dmfh *onDemandDatasatCreationHandler) RegisterOnDemandDatasetCreation(ctx 
 		metadataFiles[dodDataset.ObserverMetadata.MetadataSet.MetadataFileType()] = dodDataset.ObserverMetadata.Accession
 	}
 
-	go dmfh.monitorDatasetMetadataFiles(dodDataset.Accession, metadataFiles)
+	go oddch.monitorDatasetMetadataFiles(dodDataset.Accession, metadataFiles)
 
 	return nil
 }
 
-func (dmfh *onDemandDatasatCreationHandler) monitorDatasetMetadataFiles(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) {
+func (oddch *onDemandDatasatCreationHandler) monitorDatasetMetadataFiles(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) {
 	for {
-		if dmfh.ctx.Err() != nil {
+		if oddch.ctx.Err() != nil {
 			slog.Info("on demand dataset metadata file handler - stopped, context canceled")
 
 			break
 		}
 
-		done, err := dmfh.pollAndProcess(datasetAccession, datasetMetadataFiles)
+		done, err := oddch.pollAndProcess(datasetAccession, datasetMetadataFiles)
 		if err != nil {
 			slog.Warn("failed to process dataset metadata files", "error", err, "retry-in", sdaAPIPollInterval.String())
 		}
@@ -257,7 +257,7 @@ func (dmfh *onDemandDatasatCreationHandler) monitorDatasetMetadataFiles(datasetA
 
 		select {
 		case <-time.After(sdaAPIPollInterval):
-		case <-dmfh.ctx.Done():
+		case <-oddch.ctx.Done():
 			slog.Info("on demand dataset metadata file handler - stopped, context done")
 
 			return
@@ -265,14 +265,14 @@ func (dmfh *onDemandDatasatCreationHandler) monitorDatasetMetadataFiles(datasetA
 	}
 }
 
-func (dmfh *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) (bool, error) {
-	ctx, span := observability.StartSpan(dmfh.ctx, "pollAndProcess", attribute.String("accession", datasetAccession))
+func (oddch *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession string, datasetMetadataFiles map[metadata_models.MetadataFileType]string) (bool, error) {
+	ctx, span := observability.StartSpan(oddch.ctx, "pollAndProcess", attribute.String("accession", datasetAccession))
 	defer span.End()
 
 	// verified -> do accession
 	// all ready -> mappings
 
-	metadataFiles, err := dmfh.listMetadataFiles(ctx, datasetAccession)
+	metadataFiles, err := oddch.listMetadataFiles(ctx, datasetAccession)
 	if err != nil {
 		return false, fmt.Errorf("failed to list metadata files: %w", err)
 	}
@@ -317,7 +317,7 @@ func (dmfh *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession stri
 				continue
 			}
 
-			if err := dmfh.triggerFileAccession(ctx, metadataFile.FileId, fileAccession); err != nil {
+			if err := oddch.triggerFileAccession(ctx, metadataFile.FileId, fileAccession); err != nil {
 				return false, fmt.Errorf("failed to trigger file accession: %w", err)
 			}
 			allReady = false
@@ -329,17 +329,31 @@ func (dmfh *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession stri
 		}
 	}
 
-	// TODO reconciliate, eg no files if dataset creation / release was success but rems stuff failed
-	if !allReady || len(metadataFiles) == 0 {
+	if !allReady {
 		return false, nil
 	}
 
-	imageBaseFileNames, err := database.ListOnDemandDatasetImageFileAccessions(ctx, datasetAccession)
-	if err != nil {
-		return false, fmt.Errorf("failed to list on demand dataset image accessions: %w", err)
+	currentDatasetStatus := ""
+	if len(metadataFiles) == 0 {
+		// Check if dataset has already been created by previous iteration
+		currentDatasetStatus, _, err = oddch.getDatasetStatus(ctx, datasetAccession)
+		if err != nil && !errors.Is(err, ErrDatasetNotFound) {
+			return false, fmt.Errorf("failed to get dataset status: %w", err)
+		}
+
+		if currentDatasetStatus == "" {
+			return false, nil
+		}
 	}
 
-	nrOfFilesToAdd, err := dmfh.triggerDatasetCreation(ctx, datasetAccession, datasetMetadataFiles, imageBaseFileNames)
+	if currentDatasetStatus == "released" {
+		if err := oddch.createRemsResources(ctx, datasetAccession); err != nil {
+			return false, err
+		}
+
+		return true, nil
+	}
+	nrOfFilesToAdd, err := oddch.triggerDatasetCreation(ctx, datasetAccession, datasetMetadataFiles)
 	if err != nil {
 		return false, fmt.Errorf("failed to trigger dataset creation: %w", err)
 	}
@@ -347,10 +361,9 @@ func (dmfh *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession stri
 	// Small sleep to give chance for dataset creation to be processed, as otherwise sda-api will most likely just respond with not found on first check while mapper is processing creation request
 	time.Sleep(5 * time.Second)
 
-	// TODO handle restarts for these retries
 	attempts := 0
 	for {
-		_, nrOfFilesAdded, err := dmfh.getDatasetStatus(ctx, datasetAccession)
+		_, nrOfFilesAdded, err := oddch.getDatasetStatus(ctx, datasetAccession)
 		if err != nil && !errors.Is(err, ErrDatasetNotFound) {
 			return false, fmt.Errorf("failed to get dataset status: %w", err)
 		}
@@ -368,13 +381,13 @@ func (dmfh *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession stri
 		attempts++
 	}
 
-	if err := dmfh.triggerDatasetRelease(ctx, datasetAccession); err != nil {
+	if err := oddch.triggerDatasetRelease(ctx, datasetAccession); err != nil {
 		return false, fmt.Errorf("failed to trigger on demand dataset release: %w", err)
 	}
 
 	attempts = 0
 	for {
-		status, _, err := dmfh.getDatasetStatus(ctx, datasetAccession)
+		status, _, err := oddch.getDatasetStatus(ctx, datasetAccession)
 		if err != nil {
 			return false, fmt.Errorf("failed to get dataset status: %w", err)
 		}
@@ -395,22 +408,30 @@ func (dmfh *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession stri
 		return false, fmt.Errorf("failed to set on demand dataset as released: %w", err)
 	}
 
-	remsMetadata, err := database.GetOnDemandDatasetRemsMetadata(ctx, datasetAccession)
-	if err != nil {
+	if err := oddch.createRemsResources(ctx, datasetAccession); err != nil {
 		return false, err
 	}
 
-	remsResourceID, err := dmfh.createRemsResource(ctx, remsMetadata, datasetAccession)
+	return true, nil
+}
+
+func (oddch *onDemandDatasatCreationHandler) createRemsResources(ctx context.Context, datasetAccession string) error {
+	remsMetadata, err := database.GetOnDemandDatasetRemsMetadata(ctx, datasetAccession)
 	if err != nil {
-		return false, fmt.Errorf("failed to create rems resource for on demand dataset: %w", err)
+		return fmt.Errorf("failed to get on demand dataset rems metadata from database: %w", err)
 	}
-	if err := dmfh.createRemsCatalogueItem(ctx, remsMetadata, datasetAccession, remsResourceID); err != nil {
-		return false, fmt.Errorf("failed to create rems catalog item for on demand dataset: %w", err)
+
+	remsResourceID, err := oddch.createRemsResource(ctx, remsMetadata, datasetAccession)
+	if err != nil {
+		return fmt.Errorf("failed to create rems resource for on demand dataset: %w", err)
+	}
+	if err := oddch.createRemsCatalogueItem(ctx, remsMetadata, datasetAccession, remsResourceID); err != nil {
+		return fmt.Errorf("failed to create rems catalog item for on demand dataset: %w", err)
 	}
 
 	if err := sendEmailNotifications(ctx, datasetAccession); err != nil {
-		return false, fmt.Errorf("failed to send email notifications: %w", err)
+		return fmt.Errorf("failed to send email notifications: %w", err)
 	}
 
-	return true, nil
+	return nil
 }

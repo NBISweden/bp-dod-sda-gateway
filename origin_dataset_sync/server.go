@@ -1,8 +1,7 @@
-package dataset_on_demand_admin
+package origin_dataset_sync
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"connectrpc.com/grpcreflect"
 	privatedodservice "github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/private/v1/v1connect"
 	publicdodservice "github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/public/v1/v1connect"
-	"github.com/NBISweden/bp-dod-sda-gateway/origin_dataset_file_loader"
 )
 
 type Server struct {
@@ -19,9 +17,7 @@ type Server struct {
 }
 
 type Config struct {
-	Port                    int
-	ConnectRPCInterceptors  []connect.Interceptor
-	OriginDatasetFileLoader origin_dataset_file_loader.OriginDatasetFileLoader
+	ConnectRPCInterceptors []connect.Interceptor
 }
 
 func (d *Server) ListenAndServe() error {
@@ -32,17 +28,10 @@ func (d *Server) Shutdown(ctx context.Context) error {
 }
 
 func NewServer(config Config) (*Server, error) {
-	if config.OriginDatasetFileLoader == nil {
-		return nil, errors.New("no origin dataset file loader provided")
-	}
-	if config.Port == 0 {
-		return nil, errors.New("no port provided")
-	}
-
 	mux := http.NewServeMux()
-	mux.Handle(privatedodservice.NewDatasetOnDemandAdminServiceHandler(
+	mux.Handle(privatedodservice.NewOriginDatasetSyncServiceHandler(
 		&serviceImpl{
-			originDatasetFileLoader: config.OriginDatasetFileLoader,
+			syncer: ods,
 		},
 		connect.WithInterceptors(config.ConnectRPCInterceptors...),
 	))
@@ -60,7 +49,7 @@ func NewServer(config Config) (*Server, error) {
 	p.SetUnencryptedHTTP2(true)
 	doDServer := &Server{
 		srv: &http.Server{
-			Addr:              fmt.Sprintf(":%d", config.Port),
+			Addr:              fmt.Sprintf(":%d", servicePort),
 			Handler:           mux,
 			Protocols:         p,
 			ReadHeaderTimeout: 20 * time.Second,

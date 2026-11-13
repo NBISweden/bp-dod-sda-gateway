@@ -448,6 +448,44 @@ type NullableAttributes struct {
 	Nil   bool
 }
 
+func (na *NullableAttributes) Get(key string) any {
+	if na.Nil || na.Value == nil {
+		return nil
+	}
+
+	for _, a := range na.Value.StringAttributes {
+		if a.Tag == key {
+			return a.Value
+		}
+	}
+
+	for _, a := range na.Value.NumericAttributes {
+		if a.Tag == key {
+			return a.Value
+		}
+	}
+
+	for _, a := range na.Value.MeasurementAttributes {
+		if a.Tag == key {
+			return a.Value
+		}
+	}
+
+	for _, a := range na.Value.CodeAttributes {
+		if a.Tag == key {
+			return a.Value
+		}
+	}
+
+	for _, a := range na.Value.SetAttributes {
+		if a.Tag == key {
+			return a.Value
+		}
+	}
+
+	return nil
+}
+
 func (na *NullableAttributes) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	if na.Nil {
 		start.Attr = append(start.Attr,
