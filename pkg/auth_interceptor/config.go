@@ -11,7 +11,7 @@ import (
 var (
 	jwtPubKeyUrl      string
 	jwtKeySetCacheTTL time.Duration
-	allowedAudience   string
+	allowedAudiences  []string
 )
 
 func init() {
@@ -34,13 +34,13 @@ func init() {
 				jwtKeySetCacheTTL = viper.GetDuration(flagName)
 			},
 		}, &config.Flag{
-			Name: "auth.allowed_audience",
+			Name: "auth.allowed_audiences",
 			RegisterFunc: func(flagSet *pflag.FlagSet, flagName string) {
-				flagSet.String(flagName, "", "The audience the jwt token needs to have to be deemed valid")
+				flagSet.StringSlice(flagName, nil, "Comma-separated list of accepted JWT audiences (aud claim); a token must contain at least one of them")
 			},
 			Required: true,
 			AssignFunc: func(flagName string) {
-				allowedAudience = viper.GetString(flagName)
+				allowedAudiences = viper.GetStringSlice(flagName)
 			},
 		},
 	)

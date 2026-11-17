@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -139,7 +140,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, req *http.Request) (an
 
 	validAud := false
 	for _, tokenAud := range tokenAudiences {
-		if tokenAud == allowedAudience {
+		if slices.Contains(allowedAudiences, tokenAud) {
 			validAud = true
 
 			break
@@ -148,7 +149,6 @@ func (a *Authenticator) Authenticate(ctx context.Context, req *http.Request) (an
 
 	if !validAud {
 		span.Info("token audience not valid",
-			slog.String("allowed-audience", allowedAudience),
 			slog.String("token-audience", strings.Join(tokenAudiences, ",")),
 		)
 
