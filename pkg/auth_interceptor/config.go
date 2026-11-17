@@ -1,6 +1,7 @@
 package auth_interceptor
 
 import (
+	"strings"
 	"time"
 
 	"github.com/NBISweden/bp-dod-sda-gateway/pkg/config"
@@ -40,7 +41,17 @@ func init() {
 			},
 			Required: true,
 			AssignFunc: func(flagName string) {
-				allowedAudiences = viper.GetStringSlice(flagName)
+				raw := viper.GetStringSlice(flagName)
+
+				// Env vars arrive as a single string, so also split on commas.
+				allowedAudiences = allowedAudiences[:0]
+				for _, entry := range raw {
+					for _, aud := range strings.Split(entry, ",") {
+						if aud = strings.TrimSpace(aud); aud != "" {
+							allowedAudiences = append(allowedAudiences, aud)
+						}
+					}
+				}
 			},
 		},
 	)
