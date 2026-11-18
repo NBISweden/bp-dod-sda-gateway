@@ -1,0 +1,22 @@
+syntax = "proto3";
+package dataset_on_demand;
+
+option go_package = "github.com/NBISweden/bp-dod-sda-gateway/grpc_gen/go/private/v1";
+
+
+service OriginDatasetSyncService {
+  rpc TriggerOriginDatasetsSync(TriggerOriginDatasetsSyncRequest) returns (TriggerOriginDatasetsSyncResponse);
+  rpc SyncOriginDataset(SyncOriginDatasetRequest) returns (SyncOriginDatasetResponse);
+}
+
+message SyncOriginDatasetRequest {
+  string dataset_accession = 1;
+}
+message SyncOriginDatasetResponse {
+}
+
+
+message TriggerOriginDatasetsSyncRequest {
+}
+message TriggerOriginDatasetsSyncResponse {
+}
