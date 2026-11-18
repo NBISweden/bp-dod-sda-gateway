@@ -18,9 +18,6 @@ func (d *serviceImpl) TriggerOriginDatasetsSync(ctx context.Context, _ *connect.
 	ctx, span := observability.StartSpan(ctx, "TriggerOriginDatasetsSync")
 	defer span.End()
 
-	span.Info("info")
-	span.Info("debug")
-
 	d.syncer.triggerSync(context.WithoutCancel(ctx))
 
 	return connect.NewResponse(&dodservice.TriggerOriginDatasetsSyncResponse{}), nil

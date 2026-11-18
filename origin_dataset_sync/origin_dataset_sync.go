@@ -29,6 +29,8 @@ type originDatasetSync struct {
 
 	httpClient *http.Client
 
+	syncingInProgress bool
+
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -51,6 +53,9 @@ func Init(ctx context.Context) error {
 }
 
 func (ods *originDatasetSync) triggerSync(ctx context.Context) {
+	if ods.syncingInProgress {
+		return
+	}
 	ods.manualSyncChan <- ctx
 }
 
@@ -76,8 +81,9 @@ func (ods *originDatasetSync) syncer() {
 			syncCtx = manualSyncCtx
 		case <-time.After(syncInterval):
 		}
-
+		ods.syncingInProgress = true
 		ods.syncOriginDatasets(syncCtx)
+		ods.syncingInProgress = false
 	}
 }
 func (ods *originDatasetSync) syncOriginDatasets(ctx context.Context) {
@@ -130,6 +136,12 @@ func (ods *originDatasetSync) syncOriginDatasets(ctx context.Context) {
 	defer func() {
 		_ = rsp.Body.Close()
 	}()
+
+	if rsp.StatusCode != http.StatusOK {
+		span.Error("non 200 status code when listing submissions to be synced", nil)
+
+		return
+	}
 
 	parsedRsp := new(listSyncDatasetsResponse)
 

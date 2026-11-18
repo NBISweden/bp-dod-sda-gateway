@@ -377,7 +377,12 @@ func (oddch *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession str
 			slog.Int("files_added", nrOfFilesAdded),
 			slog.Int("files_to_add", nrOfFilesToAdd),
 		)
-		time.Sleep(sdaAPIPollInterval)
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		case <-time.After(sdaAPIPollInterval):
+		}
+
 		attempts++
 	}
 
@@ -400,12 +405,12 @@ func (oddch *onDemandDatasatCreationHandler) pollAndProcess(datasetAccession str
 			slog.Int("attempt", attempts),
 			slog.String("current_status", status),
 		)
-		time.Sleep(sdaAPIPollInterval)
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		case <-time.After(sdaAPIPollInterval):
+		}
 		attempts++
-	}
-
-	if err := database.SetOnDemandDatasetReleased(ctx, datasetAccession); err != nil {
-		return false, fmt.Errorf("failed to set on demand dataset as released: %w", err)
 	}
 
 	if err := oddch.createRemsResources(ctx, datasetAccession); err != nil {
@@ -431,6 +436,10 @@ func (oddch *onDemandDatasatCreationHandler) createRemsResources(ctx context.Con
 
 	if err := sendEmailNotifications(ctx, datasetAccession); err != nil {
 		return fmt.Errorf("failed to send email notifications: %w", err)
+	}
+
+	if err := database.SetOnDemandDatasetReleased(ctx, datasetAccession); err != nil {
+		return fmt.Errorf("failed to set on demand dataset as released: %w", err)
 	}
 
 	return nil

@@ -11,7 +11,8 @@ const getOriginDatasetAccessionFromImageAccessionQuery = "getOriginDatasetAccess
 func init() {
 	queries[getOriginDatasetAccessionFromImageAccessionQuery] = `SELECT dataset_accession
 FROM dataset_image
-WHERE accession = $1;`
+WHERE accession = $1
+AND removed_from_dataset IS true;`
 }
 func (db *pgDb) getOriginDatasetAccessionFromImageAccession(ctx context.Context, tx *sql.Tx, imageAccession string) (string, error) {
 	stmt, err := db.getPreparedStmt(tx, getOriginDatasetAccessionFromImageAccessionQuery)

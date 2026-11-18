@@ -55,6 +55,8 @@ func sendEmailNotifications(ctx context.Context, datasetAccession string) error 
 		msg, err := buildEmail(datasetAccession, recipient)
 		if err != nil {
 			span.Warn("failed to build rems notification email", slog.String("recipient", recipient), slog.Any("error", err))
+
+			continue
 		}
 
 		if err := client.DialAndSendWithContext(ctx, msg); err != nil {

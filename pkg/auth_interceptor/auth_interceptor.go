@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -22,6 +23,8 @@ import (
 type Authenticator struct {
 	jwkKeySet     jwk.Set
 	ketSetFetched time.Time
+
+	sync.Mutex
 }
 type AuthCtxInfo struct {
 	Subject  string
@@ -49,6 +52,9 @@ func NewAuthenticator() (*Authenticator, error) {
 }
 
 func (a *Authenticator) getJwkKeySet(ctx context.Context) (jwk.Set, error) {
+	a.Lock()
+	defer a.Unlock()
+
 	if a.ketSetFetched.Add(jwtKeySetCacheTTL).After(time.Now()) {
 		return a.jwkKeySet, nil
 	}

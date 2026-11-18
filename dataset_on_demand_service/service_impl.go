@@ -344,10 +344,13 @@ func (d *serviceImpl) getUserEmail(ctx context.Context, userToken string) (strin
 	if err != nil {
 		return "", fmt.Errorf("failed to do request: %w", err)
 	}
-
 	defer func() {
 		_ = rsp.Body.Close()
 	}()
+
+	if rsp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("non 200 status code: %d", rsp.StatusCode)
+	}
 
 	parsedRsp := struct {
 		Email string `json:"email"`
@@ -355,6 +358,10 @@ func (d *serviceImpl) getUserEmail(ctx context.Context, userToken string) (strin
 
 	if err := json.NewDecoder(rsp.Body).Decode(&parsedRsp); err != nil {
 		return "", err
+	}
+
+	if parsedRsp.Email == "" {
+		return "", errors.New("no email present in parsed response")
 	}
 
 	return parsedRsp.Email, nil
