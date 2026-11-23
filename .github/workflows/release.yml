@@ -150,13 +150,17 @@ jobs:
           GIT_SHA=$(git rev-parse HEAD)
           echo "GIT_SHA=$GIT_SHA" >> $GITHUB_ENV
 
+      - name: Lowercase repository name
+        id: repo
+        run: echo "lower_case_repository=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
       - name: Build ${{ matrix.name }} container
         uses: docker/build-push-action@v7
         with:
           context: ./${{ matrix.path }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:v${{ inputs.version }}
+            ghcr.io/${{ steps.repo.outputs.lower_case_repository }}:v${{ inputs.version }}
           labels: |
             org.opencontainers.image.title=${{ github.repository }}
             org.opencontainers.image.description=Big Picture Dataset On Demand sda middleware
