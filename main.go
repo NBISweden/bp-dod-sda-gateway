@@ -56,9 +56,7 @@ func run() error {
 		_ = database.Close()
 	}()
 
-	otelInterceptor, err := otelconnect.NewInterceptor(
-		otelconnect.WithoutServerPeerAttributes(),
-	)
+	otelInterceptor, err := otelconnect.NewInterceptor()
 	if err != nil {
 		return fmt.Errorf("failed to init otel connect interceptor: %w", err)
 	}
